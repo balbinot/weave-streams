@@ -1,0 +1,17 @@
+trackpos:
+  - tracks/orphan_homo_phi2.dat
+  - [0, 1]
+  - [phi1, phi2]
+trackpm:
+  - tracks/orphan_homo_pm1_dist.dat
+  - [0, 1, 2]
+  - [phi1, pmphi1, dist]
+pmpoly: None
+age: 12
+feh: -2.1
+gioff: 0.09
+GRPoff: 0.09
+phi1range: [20, 140]
+dpm: 1.0
+dphi2: 1
+HBG: [17., 18.]

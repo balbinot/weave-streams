@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+
+import weave_streams.WideStreams_catalogue as W
+import argparse
+import os
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Produces STREAMSWIDE catalogue from main catalogue')
+    parser.add_argument('sname',
+                        type=str,
+                        nargs='+',
+                        help='name of stream [gd1, pal5, orphan or tripsc]')
+    parser.add_argument('--output',
+                        type=str,
+                        required=True,
+                        nargs='+',
+                        help='output filename')
+    parser.add_argument('--isocdir',
+                        type=str,
+                        required=False,
+                        default=os.environ['HOME']+'/isoc/',
+                        nargs='+',
+                        help='isocrhone database')
+    
+    args = parser.parse_args()
+    
+    for s, o in zip(args.sname, args.output):
+        W.makecat(s, o, isocdir=args.isocdir)

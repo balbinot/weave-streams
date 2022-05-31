@@ -1,0 +1,14 @@
+trackpos:
+  - tracks/tripsc_track.dat
+  - [0, 1]
+  - [phi1, phi2]
+pmpoly: "tracks/tripsc_pmpoly.dat"
+age: 12
+feh: -2.0
+dist: 26
+gioff: 0.09
+GRPoff: 0.09
+phi1range: [-8, 8]
+dpm: 1.0
+dphi2: 1.0
+HBG: [16.5, 17.5]

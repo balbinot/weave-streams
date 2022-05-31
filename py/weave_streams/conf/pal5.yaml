@@ -1,0 +1,16 @@
+trackpos:
+  - tracks/pal5_track_final.txt
+  - [0, 1, 2, 3]
+  - [phi1, phi2down, phi2, phi2up]
+trackpm:
+  - tracks/stream_obs_pal5_10.txt
+  - [0, 1, 2, 4, 5]
+  - [phi1, phi2, dist, pmphi1, pmphi2]
+pmpoly: None
+age: 10
+feh: -2.0
+gioff: 0.09
+GRPoff: 0.09
+phi1range: [-30, 30]
+dpm: 1.0
+HBG: [16.5, 17.5]

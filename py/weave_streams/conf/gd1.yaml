@@ -1,0 +1,16 @@
+trackpos:
+  - tracks/track.txt
+  - [0, 1, 3]
+  - [phi1, phi2, sphi2]
+trackpm:
+  - "tracks/pms.txt"
+  - [0, 3, 4, 5, 7] #file, colums(phi1, distkpc, edistkpc, pmphi1, pmphi2)
+  - [phi1, dist, edist, pmphi1, pmphi2]
+pmpoly: "tracks/gd1_pmpoly.dat"
+age: 12
+feh: -2.1
+gioff: 0.09
+GRPoff: 0.09
+phi1range: [-100, 40]
+dpm: 1.0
+HBG: [15, 16]
