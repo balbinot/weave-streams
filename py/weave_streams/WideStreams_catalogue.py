@@ -55,7 +55,7 @@ def get_data(sname, phi1min, phi1max, config='config.yaml'):
     ## Make df smaller and workable to add new columns with shorter length
     return df.to_copy(column_names=cnames, selection=phi1sel*absphi2)
 
-def makecat(sname, output, config='config.yaml'):
+def makecat(sname, output='default', config='config.yaml'):
 
     sclass = sclassdict[sname]
     c = confLoad(f'{confdir}/{sname}.yaml')  # stream specific configuration
@@ -252,7 +252,14 @@ def makecat(sname, output, config='config.yaml'):
         df["pmcut"] = inside_poly(np.c_[df.rpmphi1.values, df.rpmphi2.values], pmpoly)
 
     df["tphi2"] = df.phi2.values - fphi2(df.phi1.values)
-    if output:
-        df.export_hdf5(output, progress=True)
-    else:
+    if output=='default':
+        # default name
         df.export_hdf5("{0}_dataframe_edr3.hdf5".format(sname), progress=True)
+        return df
+    elif output:
+        # user provided name
+        df.export_hdf5(output, progress=True)
+        return df
+    else:
+        # dont export
+        return df
