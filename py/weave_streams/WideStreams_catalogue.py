@@ -5,91 +5,44 @@ import vaex
 import numpy as np
 import astropy.coordinates as coord
 import astropy.units as u
-#from astropy.table import Table
-from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
-from yaml import safe_load
 
 ## Local imports
 from weave_streams.utils.ebv import get_SFD_dust, coef
-from weave_streams.utils.util import mkpol, mu2pc, pc2mu, inside_poly, plotPreferences
+from weave_streams.utils.util import mkpol, pc2mu, inside_poly, confLoad
 from weave_streams.coords import gd1, orphan, pal5, tripsc
-from weave_streams.coords.gd1 import reflex_correct
 
 # Utility dict to link stream name to coordinate class.
 # There is probably a better way of doing this
 sclassdict = {'gd1': gd1.GD1, 'orphan': orphan.Orphan, 'pal5': pal5.Pal5, 'tripsc': tripsc.TriPsc}
 
 from vaex.astro import transformations  # # Needed for vaex>=3.0
-#from vaex.astro import transformations  # # Needed for vaex>=3.0
 vaex.astro.transformations.comat["gd1"] = gd1.R
 vaex.astro.transformations.comat["pal5"] = pal5.R
 vaex.astro.transformations.comat["orphan"] = orphan.R
 vaex.astro.transformations.comat["tripsc"] = tripsc.R
-
-## Set some plot preferences
-plotPreferences()
 
 ## Get configuration and data directories
 dirpref = os.path.dirname(__file__)
 datadir = dirpref+'/data/'
 confdir = dirpref+'/conf/'
 
-def get_data(sname, phi1min, phi1max):
+def get_data(sname, phi1min, phi1max, config='config.yaml'):
     """
     Load data from local dataframes in vaex. Could be any generic data generating function.
 
     Keep vaex file format instead of converting to table, this keeps the process efficient.
     """
 
-    df = vaex.open("/data/users/gaia/gaia-edr3/gaia-edr3.hdf5")
-    df.join(vaex.open("/data/users/gaia/gaia-edr3/gaia-edr3.d/panstarrs1.hdf5"), inplace=True)
+    cnames = confLoad(f'{confdir}/columns_gaia_x_ps1.yaml')['cnames']
+    cfg = confLoad(config)
+
+    df = vaex.open(f"{cfg['gaiadir']}/gaia-edr3.hdf5")
+    df.join(vaex.open(f"{cfg['ps1dir']}/panstarrs1.hdf5"), inplace=True)
     df.add_variable("pi", math.pi)
 
-    cnames = [
-        "source_id",
-        "ra",
-        "dec",
-        "parallax",
-        "parallax_error",
-        "pmra",
-        "pmra_error",
-        "pmdec",
-        "pmdec_error",
-        "astrometric_excess_noise",
-        "astrometric_excess_noise_sig",
-        "visibility_periods_used",
-        "phot_g_mean_flux_error",
-        "phot_g_mean_mag",
-        "phot_bp_mean_flux_error",
-        "phot_bp_mean_mag",
-        "phot_rp_mean_flux_error",
-        "phot_rp_mean_mag",
-        "ruwe",
-        "phot_bp_rp_excess_factor",
-        "l",
-        "b",
-        "obj_id",
-        "g_mean_psf_mag",
-        "g_mean_psf_mag_error",
-        "g_flags",
-        "r_mean_psf_mag",
-        "r_mean_psf_mag_error",
-        "r_flags",
-        "i_mean_psf_mag",
-        "i_mean_psf_mag_error",
-        "i_flags",
-        "z_mean_psf_mag",
-        "z_mean_psf_mag_error",
-        "z_flags",
-        "nphi1",
-        "nphi2",
-    ]
-
     ## Do matrix rotation as virtual column for speed
-    df.add_virtual_columns_celestial(
-        long_in="ra", lat_in="dec", long_out="nphi1", lat_out="nphi2", _matrix=sname
-    )
+    df.add_virtual_columns_celestial(long_in="ra", lat_in="dec", long_out="nphi1", lat_out="nphi2", _matrix=sname)
 
     if sname == "orphan":
         # Orphan is special from the start
@@ -102,11 +55,11 @@ def get_data(sname, phi1min, phi1max):
     ## Make df smaller and workable to add new columns with shorter length
     return df.to_copy(column_names=cnames, selection=phi1sel*absphi2)
 
-def makecat(sname, output, isocdir):
+def makecat(sname, output, config='config.yaml'):
 
     sclass = sclassdict[sname]
-    with open(f'{confdir}/{sname}.yaml', 'r') as f:
-        c = safe_load(f)
+    c = confLoad(f'{confdir}/{sname}.yaml')  # stream specific configuration
+    cfg = confLoad(config)
 
     age = c["age"]
     feh = c["feh"]
@@ -134,71 +87,50 @@ def makecat(sname, output, isocdir):
         t2 = {}
         t2["phi1"] = t["phi1"]
 
-    ## Produce interpolated tracks
-    fphi2 = interp1d(
-        t["phi1"],
-        t["phi2"],
-        bounds_error=False,
-        fill_value=(t["phi2"][0], t["phi2"][-1]),
-    )
-    fphi2 = interp1d(t["phi1"], t["phi2"], bounds_error=False, fill_value="extrapolate")
+    #Produce interpolated tracks
+    #fphi2 = interp1d( t["phi1"], t["phi2"], bounds_error=False, fill_value=(t["phi2"][0], t["phi2"][-1]),)
+    fphi2 = interp1d(t["phi1"], t["phi2"], bounds_error=False,
+                     fill_value="extrapolate")
+
+    # This is not used
     if "sphi2" in t.keys():
         # if only width is given
-        fW = interp1d(
-            t["phi1"],
-            t["sphi2"],
-            bounds_error=False,
-            fill_value=(t["sphi2"][0], t["sphi2"][-1]),
-        )
+        fW = interp1d(t["phi1"], t["sphi2"], bounds_error=False,
+                      fill_value=(t["sphi2"][0], t["sphi2"][-1]))
     elif "phi2up" in t.keys():
         # if up and lower bound are given
-        fWup = interp1d(
-            t["phi1"],
-            t["phi2up"],
-            bounds_error=False,
-            fill_value=(t["phi2up"][0], t["phi2up"][-1]),
-        )
-        fWdown = interp1d(
-            t["phi1"],
-            t["phi2down"],
-            bounds_error=False,
-            fill_value=(t["phi2down"][0], t["phi2down"][-1]),
-        )
+        fWup = interp1d(t["phi1"], t["phi2up"], bounds_error=False,
+                        fill_value=(t["phi2up"][0], t["phi2up"][-1]),)
+        fWdown = interp1d( t["phi1"], t["phi2down"], bounds_error=False,
+                          fill_value=(t["phi2down"][0], t["phi2down"][-1]),)
     else:
         # if nothing is given, assume dphi2
-        fW = interp1d(t["phi1"], np.zeros_like(t["phi1"]) + c["dphi2"], bounds_error=False)
+        fW = interp1d(t["phi1"], np.zeros_like(t["phi1"]) + c["dphi2"],
+                      bounds_error=False)
 
     if "pmphi1" in t2.keys():
-        fvx = interp1d(
-            t2["phi1"],
-            t2["pmphi1"],
-            bounds_error=False,
-            fill_value=(t2["pmphi1"][0], t2["pmphi1"][-1]),
-        )
+        fvx = interp1d(t2["phi1"], t2["pmphi1"], bounds_error=False,
+                       fill_value=(t2["pmphi1"][0], t2["pmphi1"][-1]),)
     else:
-        fvx = interp1d(t2["phi1"], np.zeros_like(t2["phi1"]), bounds_error=False)
+        fvx = interp1d(t2["phi1"], np.zeros_like(t2["phi1"]),
+                       bounds_error=False)
 
     if "pmphi2" in t2.keys():
-        fvy = interp1d(
-            t2["phi1"],
-            t2["pmphi2"],
-            bounds_error=False,
-            fill_value=(t2["pmphi2"][0], t2["pmphi2"][-1]),
-        )
+        fvy = interp1d(t2["phi1"], t2["pmphi2"], bounds_error=False,
+                       fill_value=(t2["pmphi2"][0], t2["pmphi2"][-1]),)
     else:
-        fvy = interp1d(t2["phi1"], np.zeros_like(t2["phi1"]), bounds_error=False)
-
-    XX = np.arange(c["phi1range"][0], c["phi1range"][1], 0.01)
+        fvy = interp1d(t2["phi1"], np.zeros_like(t2["phi1"]),
+                       bounds_error=False)
 
     # Get isochrone MIST both in Gaia and PS1 passband
-    ifeh, iage, label, iG, iBP, iRP, phase = np.loadtxt(
-        isocdir+"/Gaia/MIST_-1.5to-2.1.cmd", usecols=(7, 1, 0, 22, 23, 24, -1), unpack=True
-    )
-    j = (ifeh == feh) & (iage == lage) & (phase <= 2)
+    ifeh, iage, label, iG, iBP, iRP, phase = np.loadtxt(f"{cfg['isocdir']}/Gaia/MIST_-1.5to-2.1.cmd",
+                                                        usecols=(7, 1, 0, 22, 23, 24, -1),
+                                                        unpack=True)
+    iifeh, iiage, llabel, ig, ir, ii, iz, pphase = np.loadtxt(f"{cfg['isocdir']}/PS1/MIST_-1.5to-2.1.cmd",
+                                                              usecols=(7, 1, 0, 9, 10, 11, 12, -1),
+                                                              unpack=True)
 
-    iifeh, iiage, llabel, ig, ir, ii, iz, pphase = np.loadtxt(
-        isocdir+"/PS1/MIST_-1.5to-2.1.cmd", usecols=(7, 1, 0, 9, 10, 11, 12, -1), unpack=True
-    )
+    j = (ifeh == feh) & (iage == lage) & (phase <= 2)
     jj = (iifeh == feh) & (iiage == lage) & (pphase <= 2)
     iiG = iG[j]
     iiRP = iRP[j]
@@ -209,7 +141,7 @@ def makecat(sname, output, isocdir):
     iiz = iz[jj]
 
     # Read catalogue
-    df = get_data(sname, c["phi1range"][0], c["phi1range"][1])
+    df = get_data(sname, c["phi1range"][0], c["phi1range"][1], config=config)
     df.add_variable('pi', np.pi)
 
     if "dist" in t2.keys():
@@ -221,17 +153,13 @@ def makecat(sname, output, isocdir):
         print("No distance info, using fixed")
 
     radial_velocity = np.zeros(len(df))
-
     df['radial_velocity'] = radial_velocity
 
-    coo = coord.SkyCoord(
-        ra=df.ra.values * u.deg,
-        dec=df.dec.values * u.deg,
-        pm_ra_cosdec=df.pmra.values * u.mas / u.yr,
-        pm_dec=df.pmdec.values * u.mas / u.yr,
-        distance=df.distance.values * u.kpc,
-        radial_velocity=radial_velocity * u.km / u.s,
-    )
+    coo = coord.SkyCoord( ra=df.ra.values * u.deg, dec=df.dec.values * u.deg,
+                         pm_ra_cosdec=df.pmra.values * u.mas / u.yr,
+                         pm_dec=df.pmdec.values * u.mas / u.yr,
+                         distance=df.distance.values * u.kpc,
+                         radial_velocity=radial_velocity * u.km / u.s,)
 
     v_sun = coord.Galactocentric().galcen_v_sun
     observed = coo.transform_to(coord.Galactic)
@@ -248,7 +176,7 @@ def makecat(sname, output, isocdir):
     df["phi1"] = c3.phi1.value
     df["phi2"] = c3.phi2.value
 
-    ebv = get_SFD_dust(df.l.values, df.b.values, bdir="/Users/users/balbinot/data/")
+    ebv = get_SFD_dust(df.l.values, df.b.values, bdir=cfg['ebvmaps'])
 
     aV = 3.1 * np.array(ebv)
     aG = coef["G"] * aV
@@ -286,14 +214,12 @@ def makecat(sname, output, isocdir):
 
     # %%
     polG  = mkpol(mdmod, 0.5, iiG, iiRP, offset=c["GRPoff"], p=[0.005, 24.6, 1.5, 12.0, 0.9])
-    polgi = mkpol(mdmod, 0.5, iig, iii, offset=c["gioff"], p=[0.005, 24.6, 1.5, 13.5, 0.9])
-    poliz = mkpol(mdmod, 0.5, iii, iiz, offset=c["gioff"], p=[0.005, 24.6, 1.5, 13.5, 0.9])
+    polgi = mkpol(mdmod, 0.5, iig, iii, offset=c["gioff"],   p=[0.005, 24.6, 1.5, 13.5, 0.9])
+    poliz = mkpol(mdmod, 0.5, iii, iiz, offset=c["gioff"],   p=[0.005, 24.6, 1.5, 13.5, 0.9])
 
     df.select_lasso("dG0 - dRP0", "dG0", polG[:, 0], polG[:, 1], name="inG")
-    df.select(
-        (df.dG0 > c["HBG"][0]) * (df.dG0 < c["HBG"][1]) * (df.dG0 - df.dRP0 < 0.6),
-        name="inHB",
-    )  ## adhoc HB selection
+    df.select((df.dG0 > c["HBG"][0]) * (df.dG0 < c["HBG"][1]) * (df.dG0 - df.dRP0 < 0.6),
+              name="inHB")
 
     df.select_lasso("dg0 - di0", "dg0", polgi[:, 0], polgi[:, 1], name="ingi")
     df.select_lasso("di0 - dz0", "di0", poliz[:, 0], poliz[:, 1], name="iniz")
@@ -326,6 +252,7 @@ def makecat(sname, output, isocdir):
         df["pmcut"] = inside_poly(np.c_[df.rpmphi1.values, df.rpmphi2.values], pmpoly)
 
     df["tphi2"] = df.phi2.values - fphi2(df.phi1.values)
-    df.export_hdf5("{0}_dataframe_edr3.hdf5".format(sname), progress=True)
-
-
+    if output:
+        df.export_hdf5(output, progress=True)
+    else:
+        df.export_hdf5("{0}_dataframe_edr3.hdf5".format(sname), progress=True)

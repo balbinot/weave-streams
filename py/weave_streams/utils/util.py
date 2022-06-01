@@ -1,8 +1,45 @@
+#!/usr/bin/env python
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.path import Path as mpl_path
+import re
+import yaml
 
+
+path_matcher = re.compile(r'\$\{([^}^{]+)\}')
+def path_constructor(loader, node):
+  ''' Extract the matched value, expand env variable, and replace the match '''
+  value = node.value
+  match = path_matcher.match(value)
+  env_var = match.group()[2:-1]
+  return os.environ.get(env_var) + value[match.end():]
+
+def confLoad(fname):
+    yaml.add_implicit_resolver('!path', path_matcher)
+    yaml.add_constructor('!path', path_constructor)
+    with open(fname, 'r') as f:
+        cfg = yaml.load(f, Loader=yaml.FullLoader)
+
+    return cfg
+
+
+def get_wsdb_host():
+    home = os.environ['HOME']
+    wsdb_file = home + '/.pgpass'
+    if os.path.exists(wsdb_file):
+        wsdb = open(wsdb_file, 'r').read()
+    else:
+        try:
+            wsdb = os.environ['WSDB_HOST']
+        except KeyError:
+            print('''you must specify the host name of the database either
+with the wsdb_host file in your $HOME directory or throguh a WSDB_HOST
+environmental variable
+            ''')
+            raise
+    return wsdb
 
 def inside_poly(data, vertices):
     return mpl_path(vertices).contains_points(data)

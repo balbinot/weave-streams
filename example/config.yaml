@@ -1,0 +1,4 @@
+gaiadir: "/data/users/gaia/gaia-edr3/"
+ps1dir: "/data/users/gaia/gaia-edr3/gaia-edr3.d/"
+isocdir: ${HOME}/isoc/
+ebvmaps: ${HOME}/data/
