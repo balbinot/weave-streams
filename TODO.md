@@ -1,0 +1,5 @@
+- Test intial selection script on real data
+- Convert catprep notebook to CLI script
+- Convert pointed-streams notebook to CLI script
+- Do test run of all
+- Make concatenation and validation script (including external catalogues)
