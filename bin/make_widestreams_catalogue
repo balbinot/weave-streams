@@ -19,4 +19,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     for s, o in zip(args.sname, args.output):
-        W.makecat(s, o, isocdir=args.isocdir)
+        print(f"Compiling catalogue for {s} and outputing to {o}")
+        W.makecat(s, o)

@@ -3,11 +3,11 @@
 import weave_streams.WideStreams_targetlist as W
 import argparse
 import os
-
+import os.path
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Produces STREAMSWIDE FITS \
                                      catalogue, including external and      \
-                                     intermediate dataframes")
+                                     intermediate dataframes')
     parser.add_argument('sname',
                         type=str,
                         nargs='+',
@@ -17,11 +17,20 @@ if __name__ == '__main__':
                         required=True,
                         nargs='+',
                         help='output filename')
+    parser.add_argument('--clobber', action=argparse.BooleanOptionalAction)
+    parser.set_defaults(clobber=False)
     
     args = parser.parse_args()
     
     for s, i in zip(args.sname, args.input):
-        W.filter_data(s, i) ## Apply filter to datafram
+        if os.path.isfile(i.replace('.hdf5', '_filtered.hdf5')) and args.clobber:
+            # File exists, but you want to overwrite
+            W.filter_data(s, i) ## Apply filter to datafram
+        elif os.path.isfile(i.replace('.hdf5', '_filtered.hdf5')) and ~args.clobber:
+            # File exists, but you DO NOT want to overwrite
+            pass
+        else:
+            W.filter_data(s, i) ## Apply filter to datafram
     
     filtered = [i.replace('.hdf5', '_filtered.hdf5') for i in args.input]
     W.formatFits(filtered) ## Concatenate and add external catalogues

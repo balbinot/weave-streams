@@ -2,13 +2,15 @@
 import os
 import vaex
 import numpy as np
+import astropy.units as u
 from astropy import coordinates as C
 from astropy.io import fits
-import astropy.units as u
+from astropy.table import Table
 from scipy.interpolate import interp1d
 
 ## Local imports
 from weave_streams.coords import gd1, orphan, pal5, tripsc
+from weave_streams.utils.util import confLoad
 
 # Utility dict to link stream name to coordinate class.
 # There is probably a better way of doing this
@@ -33,9 +35,10 @@ def filter_data(sname, catalogue, config='config.yaml'):
 
     ## Not very smart, but do not want to change the YAML convention
     #cols = [(0,1), (0, 2), (0,1), (0,1)]
-    cols = c['trackpos'][1]
-    colnames = c['trackpos'][2]
-    _cidx = np.where(colnames == 'phi1')|(colnames == 'phi2')[0]
+    cols = np.array(c['trackpos'][1])
+    colnames = np.array(c['trackpos'][2])
+    _cidx = np.where((colnames == 'phi1')|(colnames == 'phi2'))[0]
+    print(colnames, _cidx, cols)
     cols=cols[_cidx]
 
     #obrange = [(-100, 40), (-30, 30), (60, 120), (-7, 7)]
@@ -78,58 +81,55 @@ def filter_data(sname, catalogue, config='config.yaml'):
     df['_pmcut'] = inpm.values
 
     print('Exporting filtered catalogue as hdf5')
-    df[j].export_hdf5(fname.replace('.hdf5', '_filtered.hdf5'), progress=True)
+    df[j].export_hdf5(catalogue.replace('.hdf5', '_filtered.hdf5'), progress=True)
+
+    return
+
+    #coo = C.SkyCoord(phi1, phi2, unit='deg', frame=sclass)
+    #rcoo = C.SkyCoord(rphi1, rphi2, unit='deg', frame=sclass)
+    #c2 = coo.transform_to(C.ICRS)
+    #rc2 = rcoo.transform_to(C.ICRS)
+    #ra, dec = c2.ra.wrap_at(wang).deg, c2.dec.deg
+    #rra, rdec = rc2.ra.wrap_at(wang).deg, rc2.dec.deg
+
+    #alltarg = 0
+    ##ra, dec = np.loadtxt(fname, usecols=(1,2), unpack=True)
+    #df = vaex.open(catalogue)
+    #ra = df.ra.values[j.values]
+    #dec = df.dec.values[j.values]
+
+    #try:
+    #    RA = np.r_[RA, ra]
+    #    DEC = np.r_[DEC, dec]
+    #except:
+    #    RA = ra
+    #    DEC = dec
 
 
-    coo = C.SkyCoord(phi1, phi2, unit='deg', frame=sclass)
-    rcoo = C.SkyCoord(rphi1, rphi2, unit='deg', frame=sclass)
-    c2 = coo.transform_to(C.ICRS)
-    rc2 = rcoo.transform_to(C.ICRS)
-    ra, dec = c2.ra.wrap_at(wang).deg, c2.dec.deg
-    rra, rdec = rc2.ra.wrap_at(wang).deg, rc2.dec.deg
+    #coo = C.SkyCoord(ra, dec, unit='deg', frame=C.ICRS)
+    #for x, y in zip(rra, rdec):
+    #    ell = Ellipse(xy=[x,y],  width=2./np.cos(np.deg2rad(y)), height=2., facecolor='None', edgecolor='k', lw=2, zorder=100)
+    #    p.gca().add_patch(ell)
+    #    coocen = C.SkyCoord(x, y, unit='deg', frame=C.ICRS)
+    #    sep = coo.separation(coocen)
+    #    jjj = sep < 1*u.deg
+    #    plot(ra[jjj], dec[jjj], 'k.', ms=1)
+    #    print(lab, len(ra[jjj]))
+    #    alltarg += len(ra[jjj])
 
-    alltarg = 0
-    #ra, dec = np.loadtxt(fname, usecols=(1,2), unpack=True)
-    df = vaex.open(catalogue)
-    ra = df.ra.values[j.values]
-    dec = df.dec.values[j.values]
+    #print(lab, alltarg, 'all')
+    #xlim(np.max(rra)+3, np.min(rra)-3)
+    #ylim(np.min(rdec)-3, np.max(rdec)+3)
 
-    try:
-        RA = np.r_[RA, ra]
-        DEC = np.r_[DEC, dec]
-    except:
-        RA = ra
-        DEC = dec
+    #sra, sdec = rc2.ra.deg, rc2.dec.deg
+    #np.savetxt(lab+'_WEAVE_tiles.dat', np.array([sra, sdec]).T, fmt=['%.5f', '%.5f'])
+    ##p.plot(sra, sdec, 'o')
 
-
-    coo = C.SkyCoord(ra, dec, unit='deg', frame=C.ICRS)
-    for x, y in zip(rra, rdec):
-        ell = Ellipse(xy=[x,y],  width=2./np.cos(np.deg2rad(y)), height=2., facecolor='None', edgecolor='k', lw=2, zorder=100)
-        p.gca().add_patch(ell)
-        coocen = C.SkyCoord(x, y, unit='deg', frame=C.ICRS)
-        sep = coo.separation(coocen)
-        jjj = sep < 1*u.deg
-        plot(ra[jjj], dec[jjj], 'k.', ms=1)
-        print(lab, len(ra[jjj]))
-        alltarg += len(ra[jjj])
-
-    print(lab, alltarg, 'all')
-    xlim(np.max(rra)+3, np.min(rra)-3)
-    ylim(np.min(rdec)-3, np.max(rdec)+3)
-
-    sra, sdec = rc2.ra.deg, rc2.dec.deg
-    np.savetxt(lab+'_WEAVE_tiles.dat', np.array([sra, sdec]).T, fmt=['%.5f', '%.5f'])
-    #p.plot(sra, sdec, 'o')
-
-    if 'pmcut' not in df.column_names:
-        df['pmcut'] = np.zeros_like(df.ra.values).astype(np.bool)
-
-    df[j].export_hdf5(catalogue.replace('.hdf5', '_filtered.hdf5'))
 
     return
 
 
-def formatFits(filteredCatalogues, external=['sag', 'cetus']):
+def formatFits(filteredCatalogues, external=['sag'], config='config.yaml'):
     """
     Get filtered hdf5 dataframes and format them to FITS, ready to submit as target lists.
 
@@ -137,7 +137,9 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus']):
 
     """
 
-    df = vaex.open_many(filteredCatalogues):
+    cfg = confLoad(config)                   # global configuration
+
+    df = vaex.open_many(filteredCatalogues)
     dfnew = df
 
     ## Extract data from DF
@@ -152,7 +154,7 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus']):
 
     for ename in external:
         # Concatenate with external catalogues
-        f = parseExternalCatalogues(ename)
+        f = parseExternalCatalogues(ename, cfg=cfg)
         #return (ra, dec, Gmag, source_id, rmag, revid, ps1id)
 
         ra = np.r_[ra, f[0]]
@@ -217,15 +219,12 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus']):
     tbl.write(ofile, overwrite=True)
     fits.setval(ofile, 'VERSION', value=f'{catversion}')
     fits.setval(ofile, 'CATALOG', value='STREAMSWIDE')
-    a = fits.open(ofile)
 
-    ## %%
-    ### also save dataframe
+    ### TODO: save dataframe to use in pointed script
     #df3.export_hdf5(ofile.replace('.fits', '.DF.hdf5'))
     #dfnew.export_hdf5(ofile.replace('.fits', '.DFnew.hdf5'))
 
-
-def parseExternalCatalogues(feature="sag"):
+def parseExternalCatalogues(feature="sag", cfg=None):
 
     """
     feature: str (one of: sag, cetus)
@@ -234,7 +233,7 @@ def parseExternalCatalogues(feature="sag"):
     c = confLoad(f'{datadir}/external/{feature}.yaml')  # stream specific configuration
 
     if '.fits' in c['filename']:
-        data = fits.open(c['filename'])[1]
+        data = fits.open(f"{datadir}/{c['filename']}")[1]
 
     # Names of columns (required: RA, DEC, Gmag, source_id)
     _ra = c['cnames'][0]
@@ -247,7 +246,6 @@ def parseExternalCatalogues(feature="sag"):
     G         = data.data[_G][0]
     source_id = data.data[_sourceid][0]
 
-    cfg = confLoad(config)                   # global configuration
     Gfaint  = cfg['maglim'][1]
     Gbright = cfg['maglim'][0]
     rfaint  = cfg['psmaglim'][1]
@@ -267,7 +265,7 @@ def parseExternalCatalogues(feature="sag"):
 
     # If GDR2 do xmatch to update source_ids
     if c['gaiarev'] <= 2:
-        dfext = vaex.from_arrays(ra=ra, dec=dec, G=G, source_id=source_id)
+        dfext = vaex.from_arrays(ra=ra, dec=dec, G=G, source_id=source_id.astype(np.int64))
 
         edr3 = vaex.open(f"{cfg['gaiadir']}/gaia-edr3.hdf5")
         edr3.join(vaex.open(f"{cfg['ps1dir']}/dr2_best_neighbour.hdf5"), inplace=True)
@@ -291,16 +289,15 @@ def parseExternalCatalogues(feature="sag"):
         dec       = dfext_fixid.dec.values
         source_id = dfext_fixid.source_id.values ##This eDR3 surce_id; external catalogue has _ext suffix
         Gmag      = dfext_fixid.phot_g_mean_mag.values
-
-        rmag = dfext.r_mean_psf_mag.values
-        j = (rmag < rfaint)*(rmag > rbright)*(sagdec> decmin)
+        rmag      = dfext_fixid.r_mean_psf_mag.values
+        j = (rmag < rfaint)*(rmag > rbright)*(dec> decmin)
 
         # Apply filter (inplace)
-        ra        = ra[jsag]
-        dec       = dec[jsag]
-        Gmag      = Gmag[jsag]
-        source_id = source_id[jsag]
-        rmag      = rmag[jsag]
+        ra        = ra[j]
+        dec       = dec[j]
+        Gmag      = Gmag[j]
+        source_id = source_id[j]
+        rmag      = rmag[j]
         revid = np.zeros_like(ra).astype(np.int64) + 3
         ps1id = np.zeros_like(ra).astype(np.int64)
 

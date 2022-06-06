@@ -39,7 +39,7 @@ def get_data(sname, phi1min, phi1max, config='config.yaml'):
 
     df = vaex.open(f"{cfg['gaiadir']}/gaia-edr3.hdf5")
     df.join(vaex.open(f"{cfg['ps1dir']}/panstarrs1.hdf5"), inplace=True)
-    df.add_variable("pi", math.pi)
+    df.add_variable("pi", np.pi)
 
     ## Do matrix rotation as virtual column for speed
     df.add_virtual_columns_celestial(long_in="ra", lat_in="dec", long_out="nphi1", lat_out="nphi2", _matrix=sname)
