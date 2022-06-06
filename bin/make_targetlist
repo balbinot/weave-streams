@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+
+import weave_streams.WideStreams_targetlist as W
+import argparse
+import os
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Produces STREAMSWIDE FITS \
+                                     catalogue, including external and      \
+                                     intermediate dataframes")
+    parser.add_argument('sname',
+                        type=str,
+                        nargs='+',
+                        help='name of stream [gd1, pal5, orphan or tripsc]')
+    parser.add_argument('--input',
+                        type=str,
+                        required=True,
+                        nargs='+',
+                        help='output filename')
+    
+    args = parser.parse_args()
+    
+    for s, i in zip(args.sname, args.input):
+        W.filter_data(s, i) ## Apply filter to datafram
+    
+    filtered = [i.replace('.hdf5', '_filtered.hdf5') for i in args.input]
+    W.formatFits(filtered) ## Concatenate and add external catalogues
