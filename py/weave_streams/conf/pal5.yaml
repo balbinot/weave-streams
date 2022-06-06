@@ -1,3 +1,4 @@
+label: "Palomar5"
 trackpos:
   - tracks/pal5_track_final.txt
   - [0, 1, 2, 3]
@@ -14,3 +15,6 @@ GRPoff: 0.09
 phi1range: [-30, 30]
 dpm: 1.0
 HBG: [16.5, 17.5]
+tdist: 2.0
+pointedfields: "fields/Palomar5_WEAVE_tiles.dat"
+pmsel: ["invx", "invy"]

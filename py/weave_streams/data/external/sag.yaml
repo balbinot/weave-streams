@@ -1,0 +1,3 @@
+filename: "external/sgr_5d_sourceid.fits"
+cnames: ["RA", "DEC", "PHOT_G_MEAN_MAG", "SOURCE_ID"]
+gaiarev: 2

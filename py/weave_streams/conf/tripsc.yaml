@@ -1,3 +1,4 @@
+label: "Tri-Pis"
 trackpos:
   - tracks/tripsc_track.dat
   - [0, 1]
@@ -12,3 +13,6 @@ phi1range: [-8, 8]
 dpm: 1.0
 dphi2: 1.0
 HBG: [16.5, 17.5]
+tdist: 1.0
+pointedfields: "fields/Tri-Pis_WEAVE_tiles.dat"
+pmsel: ["pmcut"]

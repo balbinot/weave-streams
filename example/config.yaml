@@ -2,3 +2,7 @@ gaiadir: "/data/users/gaia/gaia-edr3/"
 ps1dir: "/data/users/gaia/gaia-edr3/gaia-edr3.d/"
 isocdir: ${HOME}/isoc/
 ebvmaps: ${HOME}/data/
+maglim: [17, 21]
+psmaglim: [16, 21.1]
+decmin: -10.0
+decmax: 80.0 # Unused

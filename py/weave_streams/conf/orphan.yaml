@@ -1,3 +1,4 @@
+label: "Orphan"
 trackpos:
   - tracks/orphan_homo_phi2.dat
   - [0, 1]
@@ -15,3 +16,6 @@ phi1range: [20, 140]
 dpm: 1.0
 dphi2: 1
 HBG: [17., 18.]
+tdist: 3.0
+pointedfields: "fields/Orphan_WEAVE_tiles.dat"
+pmsel: ["invx", "invy"]
