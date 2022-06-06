@@ -15,12 +15,6 @@ if __name__ == '__main__':
                         required=True,
                         nargs='+',
                         help='output filename')
-    parser.add_argument('--isocdir',
-                        type=str,
-                        required=False,
-                        default=os.environ['HOME']+'/isoc/',
-                        nargs='+',
-                        help='isocrhone database')
     
     args = parser.parse_args()
     
