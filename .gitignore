@@ -1,3 +1,8 @@
+# Ignore some data dirs in sandbox
+sandbox/data/*
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
