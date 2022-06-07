@@ -105,7 +105,6 @@ def filter_data(sname, catalogue, config='config.yaml'):
     #    RA = ra
     #    DEC = dec
 
-
     #coo = C.SkyCoord(ra, dec, unit='deg', frame=C.ICRS)
     #for x, y in zip(rra, rdec):
     #    ell = Ellipse(xy=[x,y],  width=2./np.cos(np.deg2rad(y)), height=2., facecolor='None', edgecolor='k', lw=2, zorder=100)
@@ -129,7 +128,7 @@ def filter_data(sname, catalogue, config='config.yaml'):
     return
 
 
-def formatFits(filteredCatalogues, external=['sag'], config='config.yaml'):
+def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='config.yaml'):
     """
     Get filtered hdf5 dataframes and format them to FITS, ready to submit as target lists.
 
@@ -146,11 +145,12 @@ def formatFits(filteredCatalogues, external=['sag'], config='config.yaml'):
     ra = dfnew.ra.values
     dec = dfnew.dec.values
     source_id = dfnew.source_id.values
-    #obj_id = dfnew.objid.values ## withoug underscore it is the WSDB version
-    obj_id = dfnew.obj_id.values ## withoug underscore it is the WSDB version
+    #obj_id = dfnew.objid.values ## without underscore it is the WSDB version
+    obj_id = dfnew.obj_id.values ## without underscore it is the WSDB version
     revid = np.zeros_like(ra).astype(np.int64) + 3
     Gmag = dfnew.phot_g_mean_mag.values
     rmag = dfnew.r_mean_psf_mag.values
+    priority = np.zeros_like(ra) + 10
 
     for ename in external:
         # Concatenate with external catalogues
@@ -164,6 +164,7 @@ def formatFits(filteredCatalogues, external=['sag'], config='config.yaml'):
         rmag = np.r_[rmag, f[4]]
         revid = np.r_[revid, f[5]]
         obj_id = np.r_[obj_id, f[6]]
+        priority = np.r_[priority, f[7]]
 
 
     ## Fix datatype
@@ -190,6 +191,9 @@ def formatFits(filteredCatalogues, external=['sag'], config='config.yaml'):
     source_id = source_id[~fill]
     revid     = revid[~fill]
     obj_id    = obj_id[~fill]
+    rmag      = rmag[~fill]
+    Gmag      = Gmag[~fill]
+    priority  = priority[~fill]
 
     # Confirm removal
     print('all, unique =', len(source_id), len(np.unique(source_id)), 'shoud be equal now')
@@ -232,19 +236,33 @@ def parseExternalCatalogues(feature="sag", cfg=None):
 
     c = confLoad(f'{datadir}/external/{feature}.yaml')  # stream specific configuration
 
+    print(f"Parsing external catalog for {feature} using {c['filename']} as input")
+
+    edr3 = vaex.open(f"{cfg['gaiadir']}/gaia-edr3.hdf5")
+    edr3.join(vaex.open(f"{cfg['ps1dir']}/dr2_best_neighbour.hdf5"), inplace=True)
+    edr3.join(vaex.open(f"{cfg['ps1dir']}/panstarrs1.hdf5"), inplace=True)
+
     if '.fits' in c['filename']:
         data = fits.open(f"{datadir}/{c['filename']}")[1]
 
-    # Names of columns (required: RA, DEC, Gmag, source_id)
-    _ra = c['cnames'][0]
-    _dec = c['cnames'][1]
-    _G =  c['cnames'][2]
-    _sourceid = c['cnames'][3]
+        # Names of columns (required: RA, DEC, Gmag, source_id)
+        _ra = c['cnames'][0]
+        _dec = c['cnames'][1]
+        _G =  c['cnames'][2]
+        _sourceid = c['cnames'][3]
 
-    ra        = data.data[_ra][0]
-    dec       = data.data[_dec][0]
-    G         = data.data[_G][0]
-    source_id = data.data[_sourceid][0]
+        ra        = data.data[_ra][0]
+        dec       = data.data[_dec][0]
+        Gmag      = data.data[_G][0]
+        source_id = data.data[_sourceid][0]
+        priority  = np.zeros_like(ra) + 10
+    elif '.hdf5' in c['filename']:
+        data = vaex.open(f"{datadir}/{c['filename']}")
+        ra        = data.ra.values
+        dec       = data.dec.values
+        Gmag      = data.phot_g_mean_mag.values
+        source_id = data.source_id.values
+        priority  = data.priority.values
 
     Gfaint  = cfg['maglim'][1]
     Gbright = cfg['maglim'][0]
@@ -253,26 +271,28 @@ def parseExternalCatalogues(feature="sag", cfg=None):
     decmin  = cfg['decmin']
 
     #jsag = (sagG < Gfaint)*(sagG > Gbright)*(sagdec>-10)
-    j = (G < Gfaint)*(G > Gbright)*(dec >  decmin)
+    #j = (rmag < rfaint)*(rmag > rbright)*(dec> decmin)
+    #j = (Gmag < Gfaint)*(Gmag > Gbright)*(dec >  decmin)
 
     # Apply filter
-    ra        = ra[j]
-    dec       = dec[j]
-    G         = G[j]
-    source_id = source_id[j]
+    #ra        = ra[j]
+    #dec       = dec[j]
+    #Gmag      = Gmag[j]
+    #source_id = source_id[j]
     revid     = np.zeros_like(ra).astype(np.int64) + np.int(c['gaiarev'])
     ps1id     = np.zeros_like(ra).astype(np.int64)
 
-    # If GDR2 do xmatch to update source_ids
-    if c['gaiarev'] <= 2:
-        dfext = vaex.from_arrays(ra=ra, dec=dec, G=G, source_id=source_id.astype(np.int64))
+    dfext = vaex.from_arrays(ra=ra, dec=dec, G=Gmag, source_id=source_id.astype(np.int64), priority=priority)
 
-        edr3 = vaex.open(f"{cfg['gaiadir']}/gaia-edr3.hdf5")
-        edr3.join(vaex.open(f"{cfg['ps1dir']}/dr2_best_neighbour.hdf5"), inplace=True)
-        edr3.join(vaex.open(f"{cfg['ps1dir']}/panstarrs1.hdf5"), inplace=True)
+    if c['gaiarev'] > 2:
+        edr3joined = edr3.join(dfext, left_on='source_id', right_on='source_id', rsuffix='_ext')
+        jj = ~edr3joined.source_id_ext.isna()
+        dfext_fixid = edr3joined[jj]
+
+    # If GDR2 do xmatch to update source_ids
+    elif c['gaiarev'] <= 2:
 
         edr3joined = edr3.join(dfext, left_on='dr2_source_id', right_on='source_id', rsuffix='_ext')
-
         jj = ~edr3joined.source_id_ext.isna()
         dfext_fixid = edr3joined[jj]
 
@@ -284,22 +304,25 @@ def parseExternalCatalogues(feature="sag", cfg=None):
         #ttt = newG - oldG
         #print(mean(ttt), std(ttt))
 
-        # Get stuff again, but from official Gaia eDR3
-        ra        = dfext_fixid.ra.values
-        dec       = dfext_fixid.dec.values
-        source_id = dfext_fixid.source_id.values ##This eDR3 surce_id; external catalogue has _ext suffix
-        Gmag      = dfext_fixid.phot_g_mean_mag.values
-        rmag      = dfext_fixid.r_mean_psf_mag.values
-        j = (rmag < rfaint)*(rmag > rbright)*(dec> decmin)
+    # Get stuff again, but from official Gaia eDR3
+    ra        = dfext_fixid.ra.values
+    dec       = dfext_fixid.dec.values
+    source_id = dfext_fixid.source_id.values ##This eDR3 surce_id; external catalogue has _ext suffix
+    Gmag      = dfext_fixid.phot_g_mean_mag.values
+    rmag      = dfext_fixid.r_mean_psf_mag.values
+    priority  = dfext_fixid.priority.values
+    j = (rmag < rfaint)*(rmag > rbright)*(dec> decmin)
+    #j = (Gmag < Gfaint)*(Gmag > Gbright)*(dec >  decmin)
 
-        # Apply filter (inplace)
-        ra        = ra[j]
-        dec       = dec[j]
-        Gmag      = Gmag[j]
-        source_id = source_id[j]
-        rmag      = rmag[j]
-        revid = np.zeros_like(ra).astype(np.int64) + 3
-        ps1id = np.zeros_like(ra).astype(np.int64)
+    # Apply filter (inplace)
+    ra        = ra[j]
+    dec       = dec[j]
+    Gmag      = Gmag[j]
+    source_id = source_id[j]
+    rmag      = rmag[j]
+    priority  = priority[j]
+    revid = np.zeros_like(ra).astype(np.int64) + 3
+    ps1id = np.zeros_like(ra).astype(np.int64)
 
-    return (ra, dec, Gmag, source_id, rmag, revid, ps1id)
+    return (ra, dec, Gmag, source_id, rmag, revid, ps1id, priority)
 

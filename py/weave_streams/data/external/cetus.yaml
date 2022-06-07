@@ -1,0 +1,3 @@
+filename: "external/Cetus_w_ids.hdf5"
+cnames: ["ra", "dec", "phot_g_mean_mag", "source_id", "priority"]
+gaiarev: 3
