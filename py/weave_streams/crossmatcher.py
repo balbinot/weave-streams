@@ -1,11 +1,11 @@
+#!/usr/bin/env python
+
+
 import sqlutilpy
 import numpy as np
 import os
+from weave_streams.utils.util import get_wsdb_host
 
-def getWSDBhost():
-    with open(os.environ['HOME']+"/.pgpass", 'r') as f:
-        host = f.read()
-    return host.strip()
 
 def doit(tabname,
          ra,
@@ -90,3 +90,13 @@ def doit(tabname,
         asDict=asDict,
         conn=conn)
     return RES
+
+if __name__=="__main__":
+    wsdb = get_wsdb_host()
+    host = wsdb.split(':')[0]
+    user = wsdb.split(':')[3]
+    ra = np.arange(10)
+    dec = np.arange(10)+5
+    gmag,rmag= doit('sdssdr9.phototag', ra,dec, 'psfmag_g,psfmag_r', rad=2., host=host, db='wsdb', user=user)
+    print(gmag, rmag)
+
