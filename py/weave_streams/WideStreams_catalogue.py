@@ -1,15 +1,19 @@
 # System stuff
 import os
 from collections import OrderedDict
+from astropy.utils import data
 import vaex
 import numpy as np
 import astropy.coordinates as coord
 import astropy.units as u
 from scipy.interpolate import interp1d
+from glob import glob
 
 ## Local imports
 from weave_streams.utils.ebv import get_SFD_dust, coef
-from weave_streams.utils.util import mkpol, pc2mu, inside_poly, confLoad
+from weave_streams.utils.util import (mkpol, pc2mu, inside_poly, confLoad,
+                                      _rename_wsdbcols, get_data,
+                                      get_field_wsdb, fileExists)
 from weave_streams.coords import gd1, orphan, pal5, tripsc
 
 # Utility dict to link stream name to coordinate class.
@@ -27,35 +31,9 @@ dirpref = os.path.dirname(__file__)
 datadir = dirpref+'/data/'
 confdir = dirpref+'/conf/'
 
-def get_data(sname, phi1min, phi1max, config='config.yaml'):
-    """
-    Load data from local dataframes in vaex. Could be any generic data generating function.
+clobber=False
 
-    Keep vaex file format instead of converting to table, this keeps the process efficient.
-    """
-
-    cnames = confLoad(f'{confdir}/columns_gaia_x_ps1.yaml')['cnames']
-    cfg = confLoad(config)
-
-    df = vaex.open(f"{cfg['gaiadir']}/gaia-edr3.hdf5")
-    df.join(vaex.open(f"{cfg['ps1dir']}/panstarrs1.hdf5"), inplace=True)
-    df.add_variable("pi", np.pi)
-
-    ## Do matrix rotation as virtual column for speed
-    df.add_virtual_columns_celestial(long_in="ra", lat_in="dec", long_out="nphi1", lat_out="nphi2", _matrix=sname)
-
-    if sname == "orphan":
-        # Orphan is special from the start
-        absphi2 = np.abs(df.nphi2) < 14
-    else:
-        absphi2 = np.abs(df.nphi2) < 7
-
-    phi1sel =(df.nphi1 < phi1max) * (df.nphi1 > phi1min)
-
-    ## Make df smaller and workable to add new columns with shorter length
-    return df.to_copy(column_names=cnames, selection=phi1sel*absphi2)
-
-def makecat(sname, output='default', config='config.yaml'):
+def makecat(sname, output='default', config='config.yaml', pointedsurvey=False):
 
     sclass = sclassdict[sname]
     c = confLoad(f'{confdir}/{sname}.yaml')  # stream specific configuration
@@ -141,8 +119,32 @@ def makecat(sname, output='default', config='config.yaml'):
     iiz = iz[jj]
 
     # Read catalogue
-    df = get_data(sname, c["phi1range"][0], c["phi1range"][1], config=config)
-    df.add_variable('pi', np.pi)
+    if pointedsurvey:
+        # Get catalogue from WSDB
+        field_pos = np.loadtxt(f"{datadir}/fields/{c['label']}_WEAVE_tiles.dat")
+        for n, (_ra, _dec) in enumerate(zip(field_pos[:,0], field_pos[:,1])):
+            ofile = f"{c['label']}_{n}.hdf5" ## pointed_data/ prefix will be added by function
+            _isfile = fileExists(f'pointed_data/{ofile}')
+            if _isfile and clobber==True:
+                print('File exists and clobber')
+                get_field_wsdb(_ra, _dec, ofile)
+            elif _isfile and clobber==False:
+                print(f'File {ofile} exists, skipping query')
+            else:
+                print('File does not exist')
+                get_field_wsdb(_ra, _dec, ofile)
+        df = vaex.open_many(glob(f"pointed_data/{c['label']}*"))
+        _rename_wsdbcols(df) # Make column names compatible
+        df.add_variable("pi", np.pi)
+        df.add_virtual_columns_celestial(long_in="ra", lat_in="dec", long_out="nphi1", lat_out="nphi2", _matrix=sname)
+        df.add_virtual_columns_celestial(long_in='ra', lat_in='dec', long_out='l',
+                                 lat_out='b', name_prefix="__celestial_eq2gal",
+                                 _matrix='eq2gal')
+
+    else:
+        # Read from disk
+        df = get_data(sname, c["phi1range"][0], c["phi1range"][1], config=config)
+        df.add_variable('pi', np.pi)
 
     if "dist" in t2.keys():
         cc = np.polyfit(t2["phi1"], t2["dist"], 2)
@@ -252,13 +254,19 @@ def makecat(sname, output='default', config='config.yaml'):
         df["pmcut"] = inside_poly(np.c_[df.rpmphi1.values, df.rpmphi2.values], pmpoly)
 
     df["tphi2"] = df.phi2.values - fphi2(df.phi1.values)
+
+    if pointedsurvey:
+        suffix = '_POINTED'
+    else:
+        suffix = ''
+
     if output=='default':
         # default name
-        df.export_hdf5("{0}_dataframe_edr3.hdf5".format(sname), progress=True)
+        df.export_hdf5(f"{sname}_dataframe_edr3{suffix}.hdf5", progress=True)
         return df
     elif output:
         # user provided name
-        df.export_hdf5(output, progress=True)
+        df.export_hdf5(output.replace('.hdf5', f'{suffix}.hdf5'), progress=True)
         return df
     else:
         # dont export

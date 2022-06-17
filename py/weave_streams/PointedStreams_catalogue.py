@@ -12,6 +12,7 @@ from weave_streams.utils.ebv import get_SFD_dust, coef
 from weave_streams.utils.util import mkpol, pc2mu, inside_poly, confLoad, get_wsdb_host
 from weave_streams.utils.util import get_wsdb_host
 from weave_streams.coords import gd1, orphan, pal5, tripsc
+from weave_streams.WideStreams_catalogue import makecat
 
 ## Get configuration and data directories
 dirpref = os.path.dirname(__file__)
@@ -22,46 +23,14 @@ wsdb = get_wsdb_host()
 wsdb_host = wsdb.split(':')[0]
 wsdb_user = wsdb.split(':')[3]
 
-def get_field_wsdb(ra, dec, output):
-
-    wang = 180*u.deg
-    gdr2col = "source_id ra dec parallax pmra pmdec phot_g_mean_mag phot_bp_mean_mag phot_rp_mean_mag ebv".split(' ')
-    ps1col = "objid ra dec ebv gpsfmag gpsfmagerr rpsfmag rpsfmagerr ipsfmag ipsfmagerr".split(' ')
-    cols2qry = ', '.join(['g.'+i for i in gdr2col] + ['ps.'+i for i in ps1col])
-
-    ra = C.Angle(ra*u.deg).wrap_at(wang).value
-
-    querystr = """
-    select {cols} from
-    panstarrs_dr1.stackobjectthin as ps
-    FULL OUTER JOIN gaia_edr3_aux.panstarrs1bestneighbour as gps
-     ON ps.objid = gps.original_ext_source_id
-    FULL OUTER JOIN gaia_edr3.gaia_source as g
-        ON g.source_id = gps.source_id
-    WHERE
-    q3c_radial_query(ps.ra, ps.dec, {rac:.4f}, {decc:.4f}, 1) AND
-    (ps.ginfoflag3&panstarrs_dr1.detectionflags3('STACK_PRIMARY'))>0 AND
-    (ps.rpsfmag-ps.rkronmag)<0.05 AND
-    (ps.gpsfmag < 23);
-    """.format(cols=cols2qry, rac=ra, decc=dec)
-
-    data = sqlutilpy.get(querystr, db='wsdb', host=wsdb_host, user=wsdb_user)
-    ddict = {}
-    for k,c in enumerate(gdr2col + ps1col):
-        ddict[c] = data[k]
-    dftmp = vaex.from_dict(ddict)
-
-    path = 'pointed_data/'
-    os.makedirs(path, exist_ok=False)
-    dftmp.export_hdf5(path+output, progress=True)
-
-    return
 
 
 
 
 if __name__=='__main__':
-    get_field_wsdb(148.84874, 37.47731, 'test_gd1_ps1field.hdf5')
+    makecat('orphan', pointedsurvey=True)
+
+
 
 else:
 
