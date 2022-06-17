@@ -24,7 +24,7 @@ def path_constructor(loader, node):
   return os.environ.get(env_var) + value[match.end():]
 
 def fileExists(path):
-    my_file = Path("/path/to/file")
+    my_file = Path(path)
     return my_file.is_file()
 
 def confLoad(fname):
