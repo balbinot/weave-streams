@@ -16,5 +16,6 @@ phi1range: [-100, 40]
 dpm: 1.0
 HBG: [15, 16]
 tdist: 2.5
-pointedfields: "fields/GD-1_WEAVE_tiles.dat"
 pmsel: ["pmcut"]
+pointedfields: "fields/GD-1_WEAVE_tiles.dat"
+pointedfaint: 22.5

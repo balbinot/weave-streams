@@ -16,3 +16,4 @@ HBG: [16.5, 17.5]
 tdist: 1.0
 pointedfields: "fields/Tri-Pis_WEAVE_tiles.dat"
 pmsel: ["pmcut"]
+pointedfaint: 22.6

@@ -35,43 +35,23 @@ def confLoad(fname):
 
     return cfg
 
-def deduplicate_dataframe(df, columns=None):
+def drop_duplicates(self, columns=None, returnall=True):
+    """Return a :class:`DataFrame` object with no duplicates in the given columns.
+    .. warning:: The resulting dataframe will be in memory, use with caution.
+    :param columns: Column or list of column to remove duplicates by, default to all columns.
+    :return: :class:`DataFrame` object with duplicates filtered away.
     """
-    Implementation of deduplication of a vaex dataframe based on a notebook shared by maartenbreddels
-    in https://github.com/vaexio/vaex/issues/746
-
-    :param df: a vaex.DataFrame
-    :param columns: the column wrt which we want to deduplicate
-    :return: the dataframe with duplicates removed
-    """
-    initial_columns = df.get_column_names()
-    if columns is None:
-        column_names = df.get_column_names()
+    if returnall:
+        allcol = self.get_column_names()
+        untouched = [i for i in allcol if i not in columns] ## List of columns except the ones you are removing duplicates from
+        agg = {}
+        agg['__hidden_count'] = vaex.agg.count()
+        agg = {c: vaex.agg.first(c) for c in untouched}
     else:
-        column_names = columns
-    sets = [df._set(column_name) for column_name in column_names]
-    counts = [set.count for set in sets]
-    set_names = [df.add_variable(f'set_{column_name}', set, unique=True) for column_name, set in
-                 zip(column_names, sets)]
+        untouched = []
+        agg = {'__hidden_count': vaex.agg.count()}
 
-    # create new column 'row_id' that gives each unique 'row' the same number/id
-    expression = df[f'_ordinal_values({column_names[0]}, {set_names[0]})'].astype('int64')
-    product_count = 1
-    for count, set_name, column_name in zip(counts[:-1], set_names[1:], column_names[1:]):
-        product_count *= count
-        expression = expression + df[f'_ordinal_values({column_name}, {set_name})'].astype('int64') * product_count
-    df['row_id'] = expression
-
-    print(df.data_type(expression))
-
-    # this is not 'stable', because it is multithreaded, we may get a different id each time
-    index = df._index('row_id')
-    unique_row_ids = df.row_id.unique()
-    indices = index.map_index(unique_row_ids)
-
-    deduped = df.take(indices)
-
-    return deduped[initial_columns]
+    return self.groupby(columns+untouched, agg=agg).drop('__hidden_count')
 
 def _rename_wsdbcols(df):
     cols = ['gpsfmag', 'gpsfmagerr',
@@ -205,3 +185,41 @@ def mkpol(mu, dmu, iblue, ired, offset=0, p=[0.001, 24.5, 1.1, 12.5, 0.9]):
     M = np.r_[m + 0.5, m[::-1]]
 
     return np.c_[C, M]
+
+def angular_separation(lon1, lat1, lon2, lat2):
+    """
+    Angular separation between two points on a sphere.
+    Parameters
+    ----------
+    lon1, lat1, lon2, lat2 : `~astropy.coordinates.Angle`, `~astropy.units.Quantity` or float
+        Longitude and latitude of the two points. Quantities should be in
+        angular units; floats in radians.
+    Returns
+    -------
+    angular separation : `~astropy.units.Quantity` ['angle'] or float
+        Type depends on input; ``Quantity`` in angular units, or float in
+        radians.
+    Notes
+    -----
+    The angular separation is calculated using the Vincenty formula [1]_,
+    which is slightly more complex and computationally expensive than
+    some alternatives, but is stable at at all distances, including the
+    poles and antipodes.
+    .. [1] https://en.wikipedia.org/wiki/Great-circle_distance
+    """
+
+    d2r = np.deg2rad(1)
+    r2d = np.rad2deg(1)
+
+    sdlon = np.sin(d2r*lon2 - d2r*lon1)
+    cdlon = np.cos(d2r*lon2 - d2r*lon1)
+    slat1 = np.sin(d2r*lat1)
+    slat2 = np.sin(d2r*lat2)
+    clat1 = np.cos(d2r*lat1)
+    clat2 = np.cos(d2r*lat2)
+
+    num1 = clat2 * sdlon
+    num2 = clat1 * slat2 - slat1 * clat2 * cdlon
+    denominator = slat1 * slat2 + clat1 * clat2 * cdlon
+
+    return r2d*np.arctan2(np.sqrt(num1**2 + num2**2), denominator)

@@ -18,3 +18,4 @@ HBG: [16.5, 17.5]
 tdist: 2.0
 pointedfields: "fields/Palomar5_WEAVE_tiles.dat"
 pmsel: ["invx", "invy"]
+pointedfaint: 22.2
