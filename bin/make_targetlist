@@ -25,12 +25,12 @@ if __name__ == '__main__':
     for s, i in zip(args.sname, args.input):
         if os.path.isfile(i.replace('.hdf5', '_filtered.hdf5')) and args.clobber:
             # File exists, but you want to overwrite
-            W.filter_data(s, i) ## Apply filter to datafram
+            W.filter_data(s, i) ## Apply filter to dataframe
         elif os.path.isfile(i.replace('.hdf5', '_filtered.hdf5')) and ~args.clobber:
             # File exists, but you DO NOT want to overwrite
             pass
         else:
-            W.filter_data(s, i) ## Apply filter to datafram
+            W.filter_data(s, i) ## Apply filter to dataframe
     
     filtered = [i.replace('.hdf5', '_filtered.hdf5') for i in args.input]
     W.formatFits(filtered) ## Concatenate and add external catalogues
