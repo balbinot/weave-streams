@@ -204,6 +204,13 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     # %%
     obj_id = obj_id.astype(np.int64)
 
+
+#RA -- in degrees (double precision)
+#DEC -- in degrees (double precision)
+#SOURCE_ID -- gaia source_id (64 bit integer)
+#GAIA_REV_ID -- gaia revision id ( integer number), It can be 2 for GDR2, 3 for GDR3 or 0 if there is no Gaia Source.
+#PS1_ID -- PS1 id number if known/exists (0 otherwise) (64 bit integer)
+
     # %%
     tbl = Table()
     tbl.add_column(source_id, name='SOURCE_ID')
@@ -211,11 +218,11 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     tbl.add_column(revid, name='GAIA_REV_ID')
     tbl.add_column(ra, name='RA')
     tbl.add_column(dec, name='DEC')
-    tbl.add_column(Gmag, name='PHOT_G_MEAN_MAG')
-    tbl.add_column(rmag, name='R_MEAN_PSF_MAG')
+#    tbl.add_column(Gmag, name='PHOT_G_MEAN_MAG')
+#    tbl.add_column(rmag, name='R_MEAN_PSF_MAG')
     # %%
 
-    catversion = '220606'
+    catversion = '220622'
 
     ofile = f'STREAMSWIDE_{catversion}.fits'
 
