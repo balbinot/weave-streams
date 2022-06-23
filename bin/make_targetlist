@@ -18,19 +18,26 @@ if __name__ == '__main__':
                         nargs='+',
                         help='output filename')
     parser.add_argument('--clobber', action=argparse.BooleanOptionalAction)
+    parser.add_argument('--pointed', action=argparse.BooleanOptionalAction)
     parser.set_defaults(clobber=False)
+    parser.set_defaults(pointed=False)
     
     args = parser.parse_args()
     
-    for s, i in zip(args.sname, args.input):
-        if os.path.isfile(i.replace('.hdf5', '_filtered.hdf5')) and args.clobber:
-            # File exists, but you want to overwrite
-            W.filter_data(s, i) ## Apply filter to dataframe
-        elif os.path.isfile(i.replace('.hdf5', '_filtered.hdf5')) and ~args.clobber:
-            # File exists, but you DO NOT want to overwrite
-            pass
-        else:
-            W.filter_data(s, i) ## Apply filter to dataframe
-    
-    filtered = [i.replace('.hdf5', '_filtered.hdf5') for i in args.input]
-    W.formatFits(filtered) ## Concatenate and add external catalogues
+    if args.pointed:
+        print("DOINT POINTED FITS CREATION")
+        W.formatFits(args.input, pointed=True) ## Concatenate and add external catalogues
+
+    else:
+        for s, i in zip(args.sname, args.input):
+            if os.path.isfile(i.replace('.hdf5', '_filtered.hdf5')) and args.clobber:
+                # File exists, but you want to overwrite
+                W.filter_data(s, i) ## Apply filter to dataframe
+            elif os.path.isfile(i.replace('.hdf5', '_filtered.hdf5')) and ~args.clobber:
+                # File exists, but you DO NOT want to overwrite
+                pass
+            else:
+                W.filter_data(s, i) ## Apply filter to dataframe
+        
+        filtered = [i.replace('.hdf5', '_filtered.hdf5') for i in args.input]
+        W.formatFits(filtered) ## Concatenate and add external catalogues

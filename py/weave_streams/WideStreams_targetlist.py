@@ -3,6 +3,7 @@ import os
 import vaex
 import numpy as np
 import astropy.units as u
+from datetime import date
 from astropy import coordinates as C
 from astropy.io import fits
 from astropy.table import Table
@@ -128,7 +129,7 @@ def filter_data(sname, catalogue, config='config.yaml'):
     return
 
 
-def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='config.yaml'):
+def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='config.yaml', pointed=False):
     """
     Get filtered hdf5 dataframes and format them to FITS, ready to submit as target lists.
 
@@ -146,11 +147,24 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     dec = dfnew.dec.values
     source_id = dfnew.source_id.values
     #obj_id = dfnew.objid.values ## without underscore it is the WSDB version
-    obj_id = dfnew.obj_id.values ## without underscore it is the WSDB version
     revid = np.zeros_like(ra).astype(np.int64) + 3
     Gmag = dfnew.phot_g_mean_mag.values
     rmag = dfnew.r_mean_psf_mag.values
     priority = np.zeros_like(ra) + 10
+
+    # For the pointed, where some stars will not have source_id
+    priority[source_id==-9999] = 3
+    revid[source_id==-9999] = 0
+
+    if pointed:
+        obj_id = dfnew.obj_id.values ## From Gaia catalogue official xm
+        objid = dfnew.objid.values ## From WSDB spatial xmatch
+        obj_id[obj_id==999999] = 0
+        objid[objid==999999] = 0
+        _tmp = obj_id + objid
+        obj_id = _tmp
+    else:
+        obj_id = dfnew.obj_id.values ## From Gaia catalogue official xm
 
     for ename in external:
         # Concatenate with external catalogues
@@ -179,24 +193,25 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     print("all, unique = ", len(source_id), len(np.unique(source_id)))
 
     ## Find and remove them
-    kkk = np.setdiff1d(np.arange(len(source_id)), np.unique(source_id, return_index=True)[1])
-    source_id[kkk]
-    fill = np.zeros_like(source_id)     #  array_length = 10
-    fill[kkk] = 1                 #  indexes = [2,5,6]
-    fill = fill.astype(np.bool)
+    if ~pointed:
+        kkk = np.setdiff1d(np.arange(len(source_id)), np.unique(source_id, return_index=True)[1])
+        source_id[kkk]
+        fill = np.zeros_like(source_id)     #  array_length = 10
+        fill[kkk] = 1                 #  indexes = [2,5,6]
+        fill = fill.astype(np.bool)
 
-    print('Duplicate IDs:', source_id[fill])
-    ra        = ra[~fill]
-    dec       = dec[~fill]
-    source_id = source_id[~fill]
-    revid     = revid[~fill]
-    obj_id    = obj_id[~fill]
-    rmag      = rmag[~fill]
-    Gmag      = Gmag[~fill]
-    priority  = priority[~fill]
+        print('Duplicate IDs:', source_id[fill])
+        ra        = ra[~fill]
+        dec       = dec[~fill]
+        source_id = source_id[~fill]
+        revid     = revid[~fill]
+        obj_id    = obj_id[~fill]
+        rmag      = rmag[~fill]
+        Gmag      = Gmag[~fill]
+        priority  = priority[~fill]
 
-    # Confirm removal
-    print('all, unique =', len(source_id), len(np.unique(source_id)), 'shoud be equal now')
+        # Confirm removal
+        print('all, unique =', len(source_id), len(np.unique(source_id)), 'shoud be equal now')
 
     # %%
     obj_id[obj_id==999999] = 0 ### This is needed if using Gaia crossmatch; WSDB sets it to zero
@@ -222,14 +237,20 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
 #    tbl.add_column(rmag, name='R_MEAN_PSF_MAG')
     # %%
 
-    catversion = '220622'
 
-    ofile = f'STREAMSWIDE_{catversion}.fits'
+    catversion = date.today().strftime('%y%m%d')
+    if pointed:
+        catclass = 'STREAMSPOINTED'
+    else:
+        catclass = 'STREAMSWIDE'
+
+
+    ofile = f'{catclass}_{catversion}.fits'
 
     # %%
     tbl.write(ofile, overwrite=True)
     fits.setval(ofile, 'VERSION', value=f'{catversion}')
-    fits.setval(ofile, 'CATALOG', value='STREAMSWIDE')
+    fits.setval(ofile, 'CATALOG', value=f'{catclass}')
 
     ### TODO: save dataframe to use in pointed script
     #df3.export_hdf5(ofile.replace('.fits', '.DF.hdf5'))

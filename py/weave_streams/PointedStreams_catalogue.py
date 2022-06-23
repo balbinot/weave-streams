@@ -25,6 +25,14 @@ wsdb_user = wsdb.split(':')[3]
 
 
 def filterExport(sname, wfile, ps1file, config='config.yaml'):
+    """
+    INPUT:
+        sname: stream name (gd1, pal5, orphan, or tripsc)
+        wfile: filtered catalogue from the streamswide selection
+        ps1file: file containing the outter join between Gaia eDR3/DR3 and PS1
+                 (see WideStreams_catalogue wsdb data fetch)
+        config: yaml file with global config
+    """
 
     c = confLoad(f'{confdir}/{sname}.yaml')  # stream specific configuration
     cfg = confLoad(config)                   # global configuration
@@ -67,6 +75,11 @@ def filterExport(sname, wfile, ps1file, config='config.yaml'):
             J = sep
 
     dfuni['inpointed'] = J
+
+    expdf = dfuni[magcut*dfuni.inpointed].to_copy()
+
+    expdf.export_hdf5(f'{sname}_dataframe_edr3_POINTED_filtered.hdf5', progress=True)
+
     return dfuni[magcut*dfuni.inpointed].to_copy()
 
     #for rac, decc in zip(ra, dec):
@@ -94,6 +107,14 @@ if __name__=='__main__':
     J = df.source_id.isna()
     df[~J].plot('ra', 'dec', colormap='gray_r')
     df[~J].scatter('ra', 'dec', length_check=False, s=1, c='r')
+
+    print(df[~J].column_names)
+
+    figure()
+    df.scatter('g_mean_psf_mag - i_mean_psf_mag', 'g_mean_psf_mag', length_check=False)
+    ylim()[::-1]
+
+
     plt.show()
 
 
