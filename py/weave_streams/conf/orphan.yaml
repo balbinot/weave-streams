@@ -19,3 +19,4 @@ HBG: [17., 18.]
 tdist: 3.0
 pointedfields: "fields/Orphan_WEAVE_tiles.dat"
 pmsel: ["invx", "invy"]
+pointedfaint: 22.4

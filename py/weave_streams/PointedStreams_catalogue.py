@@ -9,9 +9,10 @@ import sqlutilpy
 
 ## Local imports
 from weave_streams.utils.ebv import get_SFD_dust, coef
-from weave_streams.utils.util import mkpol, pc2mu, inside_poly, confLoad, get_wsdb_host
+from weave_streams.utils.util import angular_separation, mkpol, pc2mu, inside_poly, confLoad, get_wsdb_host
 from weave_streams.utils.util import get_wsdb_host
 from weave_streams.coords import gd1, orphan, pal5, tripsc
+from weave_streams.WideStreams_catalogue import makecat
 
 ## Get configuration and data directories
 dirpref = os.path.dirname(__file__)
@@ -22,46 +23,80 @@ wsdb = get_wsdb_host()
 wsdb_host = wsdb.split(':')[0]
 wsdb_user = wsdb.split(':')[3]
 
-def get_field_wsdb(ra, dec, output):
 
-    wang = 180*u.deg
-    gdr2col = "source_id ra dec parallax pmra pmdec phot_g_mean_mag phot_bp_mean_mag phot_rp_mean_mag ebv".split(' ')
-    ps1col = "objid ra dec ebv gpsfmag gpsfmagerr rpsfmag rpsfmagerr ipsfmag ipsfmagerr".split(' ')
-    cols2qry = ', '.join(['g.'+i for i in gdr2col] + ['ps.'+i for i in ps1col])
+def filterExport(sname, wfile, ps1file, config='config.yaml'):
 
-    ra = C.Angle(ra*u.deg).wrap_at(wang).value
+    c = confLoad(f'{confdir}/{sname}.yaml')  # stream specific configuration
+    cfg = confLoad(config)                   # global configuration
+    lab = c['label']
 
-    querystr = """
-    select {cols} from
-    panstarrs_dr1.stackobjectthin as ps
-    FULL OUTER JOIN gaia_edr3_aux.panstarrs1bestneighbour as gps
-     ON ps.objid = gps.original_ext_source_id
-    FULL OUTER JOIN gaia_edr3.gaia_source as g
-        ON g.source_id = gps.source_id
-    WHERE
-    q3c_radial_query(ps.ra, ps.dec, {rac:.4f}, {decc:.4f}, 1) AND
-    (ps.ginfoflag3&panstarrs_dr1.detectionflags3('STACK_PRIMARY'))>0 AND
-    (ps.rpsfmag-ps.rkronmag)<0.05 AND
-    (ps.gpsfmag < 23);
-    """.format(cols=cols2qry, rac=ra, decc=dec)
+    ra, dec = np.loadtxt(f'{datadir}/fields/{c["label"]}_WEAVE_tiles.dat', unpack=True)
 
-    data = sqlutilpy.get(querystr, db='wsdb', host=wsdb_host, user=wsdb_user)
-    ddict = {}
-    for k,c in enumerate(gdr2col + ps1col):
-        ddict[c] = data[k]
-    dftmp = vaex.from_dict(ddict)
+    dfw = vaex.open(wfile)
+    dfps1 = vaex.open(ps1file)
 
-    path = 'pointed_data/'
-    os.makedirs(path, exist_ok=False)
-    dftmp.export_hdf5(path+output, progress=True)
 
-    return
+    ## Steps:
+    # [x] Remove all Gaia stars from dfps1
+    # [x] Apply ingi filter to dfps1
+    # [x] Concatenate with dfw
+    # [x] Remove duplicates
+    # [ ] Filter faint magnitude
+    # [ ] Export FITS
 
+    notGaia = dfps1.source_id == -9999
+    df = dfps1[(notGaia)*dfps1.ingi]
+    pddf = df.to_pandas_df()
+    pddf = pddf.drop_duplicates(subset=['objid'])
+    df = vaex.from_pandas(pddf)
+
+    dfuni = dfw.concat(df)
+
+    maglim = c['pointedfaint']
+    dmag = cfg['maglim'][1] - cfg['maglim'][0]
+
+    magcut = (dfuni.g_mean_psf_mag < maglim)*(dfuni.g_mean_psf_mag > maglim - dmag)
+    _magcut = magcut.values
+
+    for rac, decc in zip(ra, dec):
+        sep = angular_separation(rac, decc, dfuni.ra.values, dfuni.dec.values) < 1
+        print(rac, decc, len(sep[sep*_magcut]))
+        try:
+            J = J|sep
+        except:
+            J = sep
+
+    dfuni['inpointed'] = J
+    return dfuni[magcut*dfuni.inpointed].to_copy()
+
+    #for rac, decc in zip(ra, dec):
+    #    cen = C.SkyCoord(ra=RA*u.deg, dec=DEC*u.deg)
+    #    sep = cen.separation(coo)
+    #    i = magcut*(sep < 1*u.deg)
+    #    print(k, n, RA, DEC, len(coo[i]))
+    #    try:
+    #        II = II|i
+    #    except:
+    #        II = i
+
+# %%
+
+
+# %%
+    #dfuni['inpointed'] = II
 
 
 
 if __name__=='__main__':
-    get_field_wsdb(148.84874, 37.47731, 'test_gd1_ps1field.hdf5')
+    from sys import argv
+    from pylab import *
+    df = filterExport(argv[1], argv[2], argv[3])
+    J = df.source_id.isna()
+    df[~J].plot('ra', 'dec', colormap='gray_r')
+    df[~J].scatter('ra', 'dec', length_check=False, s=1, c='r')
+    plt.show()
+
+
 
 else:
 
