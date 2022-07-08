@@ -1,0 +1,3 @@
+filename: "external/WEAVE_SF_targets.hdf5"
+cnames: ["source_id", "ra", "dec", "priority"]
+gaiarev: 3
