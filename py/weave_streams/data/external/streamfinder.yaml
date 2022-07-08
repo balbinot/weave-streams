@@ -1,3 +1,4 @@
+# This file was xm by source_id on gaia's official DR3 DB to get phot_g_mean_mag 
 filename: "external/WEAVE_SF_targets.hdf5"
-cnames: ["source_id", "ra", "dec", "priority"]
+cnames: ["source_id", "phot_g_mean_mag", "ra", "dec", "priority"]
 gaiarev: 3
