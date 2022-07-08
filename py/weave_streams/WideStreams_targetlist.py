@@ -3,15 +3,17 @@ import os
 import vaex
 import numpy as np
 import astropy.units as u
+from glob import glob
 from datetime import date
 from astropy import coordinates as C
 from astropy.io import fits
 from astropy.table import Table
 from scipy.interpolate import interp1d
 
+
 ## Local imports
 from weave_streams.coords import gd1, orphan, pal5, tripsc
-from weave_streams.utils.util import confLoad
+from weave_streams.utils.util import confLoad, angular_separation
 
 # Utility dict to link stream name to coordinate class.
 # There is probably a better way of doing this
@@ -168,17 +170,18 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
 
     for ename in external:
         # Concatenate with external catalogues
-        f = parseExternalCatalogues(ename, cfg=cfg)
-        #return (ra, dec, Gmag, source_id, rmag, revid, ps1id)
+        f = parseExternalCatalogues(ename, cfg=cfg, pointed=pointed)
+        if f!=0:
+            #return (ra, dec, Gmag, source_id, rmag, revid, ps1id)
 
-        ra = np.r_[ra, f[0]]
-        dec = np.r_[dec, f[1]]
-        Gmag = np.r_[Gmag, f[2]]
-        source_id = np.r_[source_id, f[3]]
-        rmag = np.r_[rmag, f[4]]
-        revid = np.r_[revid, f[5]]
-        obj_id = np.r_[obj_id, f[6]]
-        priority = np.r_[priority, f[7]]
+            ra = np.r_[ra, f[0]]
+            dec = np.r_[dec, f[1]]
+            Gmag = np.r_[Gmag, f[2]]
+            source_id = np.r_[source_id, f[3]]
+            rmag = np.r_[rmag, f[4]]
+            revid = np.r_[revid, f[5]]
+            obj_id = np.r_[obj_id, f[6]]
+            priority = np.r_[priority, f[7]]
 
 
     ## Fix datatype
@@ -189,11 +192,12 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     obj_id = obj_id.astype(np.int64)
     Gmag = Gmag.astype(np.float64)
     rmag =  rmag.astype(np.float64)
+    priority = priority.astype(np.int)
 
     print("all, unique = ", len(source_id), len(np.unique(source_id)))
 
     ## Find and remove them
-    if ~pointed:
+    if pointed==False:
         kkk = np.setdiff1d(np.arange(len(source_id)), np.unique(source_id, return_index=True)[1])
         source_id[kkk]
         fill = np.zeros_like(source_id)     #  array_length = 10
@@ -233,6 +237,7 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     tbl.add_column(revid, name='GAIA_REV_ID')
     tbl.add_column(ra, name='RA')
     tbl.add_column(dec, name='DEC')
+    tbl.add_column(priority, name='PRIORITY')
 #    tbl.add_column(Gmag, name='PHOT_G_MEAN_MAG')
 #    tbl.add_column(rmag, name='R_MEAN_PSF_MAG')
     # %%
@@ -240,7 +245,7 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
 
     catversion = date.today().strftime('%y%m%d')
     if pointed:
-        catclass = 'STREAMSPOINTED'
+        catclass = 'STREAMS'
     else:
         catclass = 'STREAMSWIDE'
 
@@ -256,7 +261,7 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     #df3.export_hdf5(ofile.replace('.fits', '.DF.hdf5'))
     #dfnew.export_hdf5(ofile.replace('.fits', '.DFnew.hdf5'))
 
-def parseExternalCatalogues(feature="sag", cfg=None):
+def parseExternalCatalogues(feature="sag", cfg=None, pointed=False):
 
     """
     feature: str (one of: sag, cetus)
@@ -310,7 +315,29 @@ def parseExternalCatalogues(feature="sag", cfg=None):
     revid     = np.zeros_like(ra).astype(np.int64) + np.int(c['gaiarev'])
     ps1id     = np.zeros_like(ra).astype(np.int64)
 
+
     dfext = vaex.from_arrays(ra=ra, dec=dec, G=Gmag, source_id=source_id.astype(np.int64), priority=priority)
+
+    if pointed:
+        ## Cutout fields
+        RA = []
+        DEC = []
+        for fname in glob(f'{datadir}/fields/*.dat'):
+            ra_field, dec_field = np.loadtxt(fname, unpack=True)
+            RA.append(ra)
+            DEC.append(dec)
+        ra = np.hstack(RA)
+        dec = np.hstack(DEC)
+        for rac, decc in zip(ra_field, dec_field):
+            sep = angular_separation(rac, decc, dfext.ra, dfext.dec) < 1
+            try:
+                J = J|sep
+            except:
+                J = sep
+        dfext = dfext[J].to_copy()
+        if len(dfext)==0:
+            return 0
+
 
     if c['gaiarev'] > 2:
         edr3joined = edr3.join(dfext, left_on='source_id', right_on='source_id', rsuffix='_ext')
