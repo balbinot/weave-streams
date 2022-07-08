@@ -131,7 +131,7 @@ def filter_data(sname, catalogue, config='config.yaml'):
     return
 
 
-def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='config.yaml', pointed=False):
+def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc', 'streamfinder'], config='config.yaml', pointed=False):
     """
     Get filtered hdf5 dataframes and format them to FITS, ready to submit as target lists.
 
@@ -223,7 +223,7 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     # %%
     obj_id = obj_id.astype(np.int64)
 
-
+# From catalogue makers guidelines
 #RA -- in degrees (double precision)
 #DEC -- in degrees (double precision)
 #SOURCE_ID -- gaia source_id (64 bit integer)
@@ -238,9 +238,6 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc'], config='
     tbl.add_column(ra, name='RA')
     tbl.add_column(dec, name='DEC')
     tbl.add_column(priority, name='PRIORITY')
-#    tbl.add_column(Gmag, name='PHOT_G_MEAN_MAG')
-#    tbl.add_column(rmag, name='R_MEAN_PSF_MAG')
-    # %%
 
 
     catversion = date.today().strftime('%y%m%d')
@@ -291,6 +288,8 @@ def parseExternalCatalogues(feature="sag", cfg=None, pointed=False):
         priority  = np.zeros_like(ra) + 10
     elif '.hdf5' in c['filename']:
         data = vaex.open(f"{datadir}/{c['filename']}")
+        if 'phot_g_mean_mag' not in data.column_names:
+            data.join(edr3['source_id', 'phot_g_mean_mag'], inplace=True, rsuffix='_')
         ra        = data.ra.values
         dec       = data.dec.values
         Gmag      = data.phot_g_mean_mag.values
