@@ -200,25 +200,32 @@ def formatFits(filteredCatalogues,
     print("all, unique = ", len(source_id), len(np.unique(source_id)))
 
     ## Find and remove them
-    if pointed==False:
-        kkk = np.setdiff1d(np.arange(len(source_id)), np.unique(source_id, return_index=True)[1])
-        source_id[kkk]
-        fill = np.zeros_like(source_id)     #  array_length = 10
-        fill[kkk] = 1                 #  indexes = [2,5,6]
-        fill = fill.astype(np.bool)
+    kkk = np.setdiff1d(np.arange(len(source_id)), np.unique(source_id, return_index=True)[1])
+    source_id[kkk]
+    fill = np.zeros_like(source_id)     #  array_length = 10
+    fill[kkk] = 1                 #  indexes = [2,5,6]
+    if pointed==True:
+        fill[source_id==-9999] = 0
+    else:
+        fill[source_id==0] = 0
+    fill = fill.astype(np.bool)
 
-        print('Duplicate IDs:', source_id[fill])
-        ra        = ra[~fill]
-        dec       = dec[~fill]
-        source_id = source_id[~fill]
-        revid     = revid[~fill]
-        obj_id    = obj_id[~fill]
-        rmag      = rmag[~fill]
-        Gmag      = Gmag[~fill]
-        priority  = priority[~fill]
+    # fill==True : Duplicate
+    print('Duplicate IDs:', source_id[fill])
 
-        # Confirm removal
-        print('all, unique =', len(source_id), len(np.unique(source_id)), 'shoud be equal now')
+    # Keep only unique
+    ra        = ra[~fill]
+    dec       = dec[~fill]
+    source_id = source_id[~fill]
+    revid     = revid[~fill]
+    obj_id    = obj_id[~fill]
+    rmag      = rmag[~fill]
+    Gmag      = Gmag[~fill]
+    priority  = priority[~fill]
+
+    # Confirm removal
+    print('all, unique =', len(source_id), len(np.unique(source_id)), 'shoud be equal now for WIDE')
+    print('all, unique =', len(source_id[source_id!=0]), len(np.unique(source_id[source_id!=0])), 'shoud be equal now for POINTED')
 
     # %%
     obj_id[obj_id==999999] = 0 ### This is needed if using Gaia crossmatch; WSDB sets it to zero
