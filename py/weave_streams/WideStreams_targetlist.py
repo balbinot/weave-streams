@@ -131,9 +131,12 @@ def filter_data(sname, catalogue, config='config.yaml'):
     return
 
 
-def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc', 'streamfinder'], config='config.yaml', pointed=False):
+def formatFits(filteredCatalogues,
+               external=['sag', 'cetus', 'tripsc', 'streamfinder'],
+               config='config.yaml', pointed=False):
     """
-    Get filtered hdf5 dataframes and format them to FITS, ready to submit as target lists.
+    Get filtered hdf5 dataframes and format them to FITS, ready to submit as
+    target lists.
 
     Add a list of external catalogues. TODO
 
@@ -219,16 +222,17 @@ def formatFits(filteredCatalogues, external=['sag', 'cetus', 'tripsc', 'streamfi
 
     # %%
     obj_id[obj_id==999999] = 0 ### This is needed if using Gaia crossmatch; WSDB sets it to zero
+    source_id[source_id==-9999] = 0
 
     # %%
     obj_id = obj_id.astype(np.int64)
 
-# From catalogue makers guidelines
-#RA -- in degrees (double precision)
-#DEC -- in degrees (double precision)
-#SOURCE_ID -- gaia source_id (64 bit integer)
-#GAIA_REV_ID -- gaia revision id ( integer number), It can be 2 for GDR2, 3 for GDR3 or 0 if there is no Gaia Source.
-#PS1_ID -- PS1 id number if known/exists (0 otherwise) (64 bit integer)
+    # From catalogue makers guidelines
+    #RA -- in degrees (double precision)
+    #DEC -- in degrees (double precision)
+    #SOURCE_ID -- gaia source_id (64 bit integer)
+    #GAIA_REV_ID -- gaia revision id ( integer number), It can be 2 for GDR2, 3 for GDR3 or 0 if there is no Gaia Source.
+    #PS1_ID -- PS1 id number if known/exists (0 otherwise) (64 bit integer)
 
     # %%
     tbl = Table()
