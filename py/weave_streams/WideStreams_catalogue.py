@@ -143,6 +143,7 @@ def makecat(sname, output='default', config='config.yaml', pointedsurvey=False):
 
     else:
         # Read from disk
+        print('Phi1 range', c['phi1range'])
         df = get_data(sname, c["phi1range"][0], c["phi1range"][1], config=config)
         df.add_variable('pi', np.pi)
 
@@ -215,21 +216,15 @@ def makecat(sname, output='default', config='config.yaml', pointedsurvey=False):
     df["dz0"] = df.z_mean_psf_mag.values - ddmod - az
 
     # %%
-    polG  = mkpol(mdmod, 0.5, iiG, iiRP, offset=c["GRPoff"], p=[0.005, 24.6, 1.5, 12.0, 0.9])
-    polgi = mkpol(mdmod, 0.5, iig, iii, offset=c["gioff"],   p=[0.005, 24.6, 1.5, 13.5, 0.9])
+    np.savetxt(f"{sname}.isocused.dat", np.array([iiG, iiRP, iig, iii, iiz, np.zeros_like(iiG)+mdmod]).T, fmt=['%6.4f']*6)
+    polG  = mkpol(mdmod, c['ddist_G'],  iiG, iiRP, offset=c["GRPoff"],  p=c['p_G'])
+    polgi = mkpol(mdmod, c['ddist_gi'], iig, iii,  offset=c["gioff"],   p=c['p_gi'])
     poliz = mkpol(mdmod, 0.5, iii, iiz, offset=c["gioff"],   p=[0.005, 24.6, 1.5, 13.5, 0.9])
 
-    df.select_lasso("dG0 - dRP0", "dG0", polG[:, 0], polG[:, 1], name="inG")
-    df.select((df.dG0 > c["HBG"][0]) * (df.dG0 < c["HBG"][1]) * (df.dG0 - df.dRP0 < 0.6),
-              name="inHB")
-
-    df.select_lasso("dg0 - di0", "dg0", polgi[:, 0], polgi[:, 1], name="ingi")
-    df.select_lasso("di0 - dz0", "di0", poliz[:, 0], poliz[:, 1], name="iniz")
-
-    df["inG"] = inside_poly(np.c_[df.dG0.values - df.dRP0.values, df.dG0.values], polG)
-    df["ingi"] = inside_poly(np.c_[df.dg0.values - df.di0.values, df.dg0.values], polgi)
-    df["iniz"] = inside_poly(np.c_[df.di0.values - df.dz0.values, df.di0.values], poliz)
-    df["inHB"] = (df.dG0 > c["HBG"][0]) * (df.dG0 < c["HBG"][1]) * (df.dG0 - df.dRP0 < 0.6)
+    df["inG"]  = df.geo.inside_polygon(df.dG0 - df.dRP0, df.dG0, polG[:,0], polG[:,1])
+    df["ingi"] = df.geo.inside_polygon(df.dg0 - df.di0, df.dg0, polgi[:,0], polgi[:,1])
+    df["iniz"] = df.geo.inside_polygon(df.di0 - df.dz0, df.di0, poliz[:,0], poliz[:,1])
+    df["inHB"] = (df.dG0 > c["HBG"][0]) * (df.dG0 < c["HBG"][1]) * (df.dG0 - df.dRP0 < 0.45)
 
     dpm = c["dpm"] ## Delta PM to select around stream track
 
@@ -240,18 +235,18 @@ def makecat(sname, output='default', config='config.yaml', pointedsurvey=False):
         ## Orphan uses reflex corrected tracks
         df["invx"] = (df.rpmphi1 < df.fvx + dpm) * (df.rpmphi1 > df.fvx - dpm)
         df["invy"] = (df.rpmphi2 < df.fvy + dpm) * (df.rpmphi2 > df.fvy - dpm)
-        df.select((df.rpmphi1 < df.fvx + dpm) * (df.rpmphi1 > df.fvx - dpm), name="invx")
-        df.select((df.rpmphi2 < df.fvy + dpm) * (df.rpmphi2 > df.fvy - dpm), name="invy")
+        #df.select((df.rpmphi1 < df.fvx + dpm) * (df.rpmphi1 > df.fvx - dpm), name="invx")
+        #df.select((df.rpmphi2 < df.fvy + dpm) * (df.rpmphi2 > df.fvy - dpm), name="invy")
     else:
         df["invx"] = (df.pmphi1 < df.fvx + dpm) * (df.pmphi1 > df.fvx - dpm)
         df["invy"] = (df.pmphi2 < df.fvy + dpm) * (df.pmphi2 > df.fvy - dpm)
-        df.select((df.pmphi1 < df.fvx + dpm) * (df.pmphi1 > df.fvx - dpm), name="invx")
-        df.select((df.pmphi2 < df.fvy + dpm) * (df.pmphi2 > df.fvy - dpm), name="invy")
+        #df.select((df.pmphi1 < df.fvx + dpm) * (df.pmphi1 > df.fvx - dpm), name="invx")
+        #df.select((df.pmphi2 < df.fvy + dpm) * (df.pmphi2 > df.fvy - dpm), name="invy")
 
     if haspmpoly != False:
         print("Doing the polygon PM cut")
-        df.select_lasso("rpmphi1", "rpmphi2", pmpoly[:, 0], pmpoly[:, 1], name="pmpoly")
-        df["pmcut"] = inside_poly(np.c_[df.rpmphi1.values, df.rpmphi2.values], pmpoly)
+        df["pmcut"] = df.geo.inside_polygon(df.rpmphi1, df.rpmphi2, pmpoly[:,0], pmpoly[:,1])
+
 
     df["tphi2"] = df.phi2.values - fphi2(df.phi1.values)
 

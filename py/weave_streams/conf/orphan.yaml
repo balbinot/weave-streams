@@ -12,7 +12,7 @@ age: 12
 feh: -2.1
 gioff: 0.09
 GRPoff: 0.09
-phi1range: [20, 140]
+phi1range: [20, 125]
 dpm: 1.0
 dphi2: 1
 HBG: [17., 18.]

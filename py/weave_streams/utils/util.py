@@ -12,8 +12,11 @@ import astropy.units as u
 import sqlutilpy
 from pathlib import Path
 
-
-
+dirpref = os.path.dirname(__file__)
+#datadir = dirpref.replace(r'/utils/','')+'/data/'
+confdir = '/'.join(dirpref.split('/')[0:-1]) + '/conf/'
+datadir = '/'.join(dirpref.split('/')[0:-1]) + '/data/'
+print(confdir)
 
 path_matcher = re.compile(r'\$\{([^}^{]+)\}')
 def path_constructor(loader, node):

@@ -11,11 +11,16 @@ pmpoly: None
 age: 10
 feh: -2.0
 gioff: 0.09
-GRPoff: 0.09
+p_gi: [0.001, 25.6, 1.4, 10.5, 0.9]
+ddist_gi: 0.1
+GRPoff: 0.05
+p_G: [0.0001, 25.6, 1.5, 1, 0.9]
+ddist_G: 0.5
 phi1range: [-30, 30]
 dpm: 1.0
-HBG: [16.5, 17.5]
-tdist: 2.0
+HBG: [16.85, 17.25]
+tdist: 1.25
 pointedfields: "fields/Palomar5_WEAVE_tiles.dat"
 pmsel: ["invx", "invy"]
 pointedfaint: 22.2
+
