@@ -19,10 +19,12 @@ GRPoff: 0.04
 p_G: [0.0001, 25.6, 1.1, 1, 2]
 ddist_G: 0.5
 
+maglimG: [18.0, 20.5] # Gaia limits to reach target density ~8-15/deg2
+
 phi1range: [-30, 30]
 dpm: 0.75
 HBG: [16.85, 17.25]
-tdist: 1.25  #deg
+tdist: 0.75  #deg
 pointedfields: "fields/Palomar5_WEAVE_tiles.dat"
 pmsel: ["invx", "invy"]
 pointedfaint: 22.2

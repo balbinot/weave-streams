@@ -18,6 +18,9 @@ ddist_gi: 0.1
 GRPoff: 0.02
 p_G: [0.001, 24.9, 1.5, 10.0, 0.9]
 ddist_G: 0.2
+
+maglimG: [0, 20.5]
+
 phi1range: [20, 125]
 dpm: 1.0
 dphi2: 1
