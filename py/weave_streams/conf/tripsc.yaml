@@ -7,10 +7,20 @@ pmpoly: "tracks/tripsc_pmpoly.dat"
 age: 12
 feh: -2.0
 dist: 26
+
+  ## PS1  
 gioff: 0.09
-GRPoff: 0.09
+p_gi: [0.005, 24.6, 1.5, 13.5, 0.9]
+ddist_gi: 0.5
+  ## Gaia
+GRPoff: 0.04
+p_G: [0.005, 24.6, 1.5, 12.0, 0.9]
+ddist_G: 0.5
+
+maglimG: [18.0, 20.5] # Gaia limits to reach target density ~8-15/deg2
+
 phi1range: [-8, 8]
-dpm: 1.0
+dpm: 0.8
 dphi2: 1.0
 HBG: [16.5, 17.5]
 tdist: 1.0

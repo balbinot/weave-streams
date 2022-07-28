@@ -10,11 +10,20 @@ trackpm:
 pmpoly: "tracks/gd1_pmpoly.dat"
 age: 12
 feh: -2.1
+  ## PS1  
 gioff: 0.09
-GRPoff: 0.09
+p_gi: [0.001, 24.9, 1.5, 10.0, 0.9]
+ddist_gi: 0.1
+  ## Gaia
+GRPoff: 0.05
+p_G: [0.001, 24.9, 1.5, 10.0, 0.9]
+ddist_G: 0.2
+
+maglimG: [16.5, 20.5]
+
 phi1range: [-100, 40]
 dpm: 1.0
-HBG: [15, 16]
+HBG: [15, 15.7]
 tdist: 2.5
 pmsel: ["pmcut"]
 pointedfields: "fields/GD-1_WEAVE_tiles.dat"

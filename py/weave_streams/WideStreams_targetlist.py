@@ -37,18 +37,14 @@ def filter_data(sname, catalogue, config='config.yaml'):
     tf = datadir+c['trackpos'][0]
 
     ## Not very smart, but do not want to change the YAML convention
-    #cols = [(0,1), (0, 2), (0,1), (0,1)]
     cols = np.array(c['trackpos'][1])
     colnames = np.array(c['trackpos'][2])
     _cidx = np.where((colnames == 'phi1')|(colnames == 'phi2'))[0]
     print(colnames, _cidx, cols)
     cols=cols[_cidx]
 
-    #obrange = [(-100, 40), (-30, 30), (60, 120), (-7, 7)]
     obrange = c['phi1range']
 
-    #frame = [gd1.GD1, pal5.Pal5, orphan.Orphan, tripsc.TriPsc]
-    #tdist = [2.5, 2, 3, 1]
     tdist = c['tdist']
 
     Gfaint  = cfg['maglim'][1]
@@ -88,48 +84,6 @@ def filter_data(sname, catalogue, config='config.yaml'):
 
     return
 
-    #coo = C.SkyCoord(phi1, phi2, unit='deg', frame=sclass)
-    #rcoo = C.SkyCoord(rphi1, rphi2, unit='deg', frame=sclass)
-    #c2 = coo.transform_to(C.ICRS)
-    #rc2 = rcoo.transform_to(C.ICRS)
-    #ra, dec = c2.ra.wrap_at(wang).deg, c2.dec.deg
-    #rra, rdec = rc2.ra.wrap_at(wang).deg, rc2.dec.deg
-
-    #alltarg = 0
-    ##ra, dec = np.loadtxt(fname, usecols=(1,2), unpack=True)
-    #df = vaex.open(catalogue)
-    #ra = df.ra.values[j.values]
-    #dec = df.dec.values[j.values]
-
-    #try:
-    #    RA = np.r_[RA, ra]
-    #    DEC = np.r_[DEC, dec]
-    #except:
-    #    RA = ra
-    #    DEC = dec
-
-    #coo = C.SkyCoord(ra, dec, unit='deg', frame=C.ICRS)
-    #for x, y in zip(rra, rdec):
-    #    ell = Ellipse(xy=[x,y],  width=2./np.cos(np.deg2rad(y)), height=2., facecolor='None', edgecolor='k', lw=2, zorder=100)
-    #    p.gca().add_patch(ell)
-    #    coocen = C.SkyCoord(x, y, unit='deg', frame=C.ICRS)
-    #    sep = coo.separation(coocen)
-    #    jjj = sep < 1*u.deg
-    #    plot(ra[jjj], dec[jjj], 'k.', ms=1)
-    #    print(lab, len(ra[jjj]))
-    #    alltarg += len(ra[jjj])
-
-    #print(lab, alltarg, 'all')
-    #xlim(np.max(rra)+3, np.min(rra)-3)
-    #ylim(np.min(rdec)-3, np.max(rdec)+3)
-
-    #sra, sdec = rc2.ra.deg, rc2.dec.deg
-    #np.savetxt(lab+'_WEAVE_tiles.dat', np.array([sra, sdec]).T, fmt=['%.5f', '%.5f'])
-    ##p.plot(sra, sdec, 'o')
-
-
-    return
-
 
 def formatFits(filteredCatalogues,
                external=['sag', 'cetus', 'tripsc', 'streamfinder'],
@@ -143,6 +97,7 @@ def formatFits(filteredCatalogues,
     """
 
     cfg = confLoad(config)                   # global configuration
+
 
     df = vaex.open_many(filteredCatalogues)
     dfnew = df
@@ -233,6 +188,32 @@ def formatFits(filteredCatalogues,
 
     # %%
     obj_id = obj_id.astype(np.int64)
+
+    mask = True
+    # Use external lists to remove spurious objects and mask some regions
+    if 'qsolist' in cfg.keys():
+        print(f'Going to remove QSO using this list: {cfg["qsolist"]}')
+        qso = Table.read("qso_list_220711.fits")
+        qsid = qso['source_id']
+        isqso = np.isin(source_id, qsid)
+        nqso = len(isqso[isqso])
+        mask *= ~isqso
+        print(f"Removed {nqso} targets for beeing QSOs")
+
+    dpal5 = angular_separation(229.022083, -0.111389, ra, dec)
+    mask *= (dpal5 > 0.5)
+    ra        = ra[mask]
+    dec       = dec[mask]
+    source_id = source_id[mask]
+    revid     = revid[mask]
+    obj_id    = obj_id[mask]
+    rmag      = rmag[mask]
+    Gmag      = Gmag[mask]
+    priority  = priority[mask]
+
+
+
+
 
     # From catalogue makers guidelines
     #RA -- in degrees (double precision)

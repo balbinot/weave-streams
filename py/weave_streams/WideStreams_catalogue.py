@@ -219,12 +219,15 @@ def makecat(sname, output='default', config='config.yaml', pointedsurvey=False):
     np.savetxt(f"{sname}.isocused.dat", np.array([iiG, iiRP, iig, iii, iiz, np.zeros_like(iiG)+mdmod]).T, fmt=['%6.4f']*6)
     polG  = mkpol(mdmod, c['ddist_G'],  iiG, iiRP, offset=c["GRPoff"],  p=c['p_G'])
     polgi = mkpol(mdmod, c['ddist_gi'], iig, iii,  offset=c["gioff"],   p=c['p_gi'])
-    poliz = mkpol(mdmod, 0.5, iii, iiz, offset=c["gioff"],   p=[0.005, 24.6, 1.5, 13.5, 0.9])
+    poliz = mkpol(mdmod, 0.5, iii, iiz, offset=c["gioff"],   p=[0.005, 24.6, 1.5, 13.5, 0.9]) # Not used
 
     df["inG"]  = df.geo.inside_polygon(df.dG0 - df.dRP0, df.dG0, polG[:,0], polG[:,1])
     df["ingi"] = df.geo.inside_polygon(df.dg0 - df.di0, df.dg0, polgi[:,0], polgi[:,1])
     df["iniz"] = df.geo.inside_polygon(df.di0 - df.dz0, df.di0, poliz[:,0], poliz[:,1])
     df["inHB"] = (df.dG0 > c["HBG"][0]) * (df.dG0 < c["HBG"][1]) * (df.dG0 - df.dRP0 < 0.45)
+
+    # Add magnitude cut from Gaia to reach target density
+    df['inG'] = df.inG*(df.phot_g_mean_mag < c['maglimG'][1])*(df.phot_g_mean_mag > c['maglimG'][0])
 
     dpm = c["dpm"] ## Delta PM to select around stream track
 
