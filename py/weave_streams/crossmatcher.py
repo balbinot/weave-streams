@@ -91,6 +91,39 @@ def doit(tabname,
         conn=conn)
     return RES
 
+def doitgaiaPS1(sid,
+                colstring,
+                host=None,
+                port=None,
+                db=None,
+                user=None,
+                password=None,
+                asDict=False,
+                conn=None,
+                preamb=None):
+    preamb = '' or preamb
+
+    qstr = f"""select {colstring} from mytmptable as m
+               join gaia_edr3_aux.panstarrs1bestneighbour as gps ON m.source_id = gps.source_id
+               join panstarrs_dr1.stackobjectthin as ps ON ps.objid = gps.original_ext_source_id
+    """
+
+    RES = sqlutilpy.local_join(qstr,
+                               'mytmptable',
+                               (sid,),
+                               ('source_id'),
+                               preamb=('set enable_seqscan to off;' + 'set enable_mergejoin to off;' + 'set enable_hashjoin to off;' + (preamb or '')),
+                               host=host,
+                               db=db,
+                               user=user,
+                               port=(port or 5432),
+                               password=password,
+                               asDict=asDict,
+                               conn=conn)
+    return RES
+
+
+
 if __name__=="__main__":
     wsdb = get_wsdb_host()
     host = wsdb.split(':')[0]
@@ -99,4 +132,11 @@ if __name__=="__main__":
     dec = np.arange(10)+5
     gmag,rmag= doit('sdssdr9.phototag', ra,dec, 'psfmag_g,psfmag_r', rad=2., host=host, db='wsdb', user=user)
     print(gmag, rmag)
+    sid_test = np.array([  4295806720,  34361129088,  38655544960, 309238066432,
+       343597448960, 515396233856, 549755818112, 828929527040,
+       927713095040, 966367933184])
+
+    gmag, rmag = doitgaiaPS1(sid_test, ('g_mean_psf_mag', 'r_mean_psf_mag'), host=host, db='wdbg', user=user)
+    print(gmag, rmag)
+
 
