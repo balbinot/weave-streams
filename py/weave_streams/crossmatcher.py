@@ -103,15 +103,21 @@ def doitgaiaPS1(sid,
                 preamb=None):
     preamb = '' or preamb
 
+    colstring = ', '.join(['ps.'+c for c in colstring.split(',')])
+    print(colstring)
     qstr = f"""select {colstring} from mytmptable as m
-               join gaia_edr3_aux.panstarrs1bestneighbour as gps ON m.source_id = gps.source_id
+               left join gaia_edr3_aux.panstarrs1bestneighbour as gps ON m.source_id = gps.source_id
                join panstarrs_dr1.stackobjectthin as ps ON ps.objid = gps.original_ext_source_id
+               where
+                (ps.ginfoflag3&panstarrs_dr1.detectionflags3('STACK_PRIMARY'))>0 AND
+                (ps.rpsfmag-ps.rkronmag)<0.05 AND
+                (ps.gpsfmag < 23);
     """
 
     RES = sqlutilpy.local_join(qstr,
                                'mytmptable',
                                (sid,),
-                               ('source_id'),
+                               ('source_id', ),
                                preamb=('set enable_seqscan to off;' + 'set enable_mergejoin to off;' + 'set enable_hashjoin to off;' + (preamb or '')),
                                host=host,
                                db=db,
@@ -128,15 +134,17 @@ if __name__=="__main__":
     wsdb = get_wsdb_host()
     host = wsdb.split(':')[0]
     user = wsdb.split(':')[3]
-    ra = np.arange(10)
-    dec = np.arange(10)+5
-    gmag,rmag= doit('sdssdr9.phototag', ra,dec, 'psfmag_g,psfmag_r', rad=2., host=host, db='wsdb', user=user)
-    print(gmag, rmag)
+    #ra = np.arange(10)
+    #dec = np.arange(10)+5
+    #gmag,rmag= doit('sdssdr9.phototag', ra,dec, 'psfmag_g,psfmag_r', rad=2., host=host, db='wsdb', user=user)
+    #print(gmag, rmag)
     sid_test = np.array([  4295806720,  34361129088,  38655544960, 309238066432,
        343597448960, 515396233856, 549755818112, 828929527040,
-       927713095040, 966367933184])
+       927713095040, 966367933184]).astype(np.int64)
+    print(sid_test)
 
-    gmag, rmag = doitgaiaPS1(sid_test, ('g_mean_psf_mag', 'r_mean_psf_mag'), host=host, db='wdbg', user=user)
-    print(gmag, rmag)
+    cols = ', '.join("objid ra dec ebv gpsfmag gpsfmagerr rpsfmag rpsfmagerr ipsfmag ipsfmagerr zpsfmag zpsfmagerr".split(' '))
+    res = doitgaiaPS1(sid_test, cols, host=host, db='wsdb', user=user)
+    print(res)
 
 
