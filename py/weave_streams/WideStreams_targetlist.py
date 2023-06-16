@@ -86,7 +86,7 @@ def filter_data(sname, catalogue, config='config.yaml'):
 
 
 def formatFits(filteredCatalogues,
-               external=['sag', 'cetus', 'tripsc', 'streamfinder'],
+               external=['lodieu_oc', 'sag', 'cetus', 'tripsc', 'streamfinder'],
                config='config.yaml', pointed=False):
     """
     Get filtered hdf5 dataframes and format them to FITS, ready to submit as
@@ -97,7 +97,6 @@ def formatFits(filteredCatalogues,
     """
 
     cfg = confLoad(config)                   # global configuration
-
 
     df = vaex.open_many(filteredCatalogues)
     dfnew = df
@@ -260,7 +259,7 @@ def parseExternalCatalogues(feature="sag", cfg=None, pointed=False):
 
     print(f"Parsing external catalog for {feature} using {c['filename']} as input")
 
-    edr3 = vaex.open(f"{cfg['gaiadir']}/gaia-edr3.hdf5")
+    edr3 = vaex.open(f"{cfg['gaiadir']}/gaia-dr3.hdf5")
     edr3.join(vaex.open(f"{cfg['ps1dir']}/dr2_best_neighbour.hdf5"), inplace=True)
     edr3.join(vaex.open(f"{cfg['ps1dir']}/panstarrs1.hdf5"), inplace=True)
 
@@ -281,7 +280,7 @@ def parseExternalCatalogues(feature="sag", cfg=None, pointed=False):
     elif '.hdf5' in c['filename']:
         data = vaex.open(f"{datadir}/{c['filename']}")
         if 'phot_g_mean_mag' not in data.column_names:
-            data.join(edr3['source_id', 'phot_g_mean_mag'], inplace=True, rsuffix='_')
+            data.join(edr3['source_id', 'phot_g_mean_mag'], inplace=True, rsuffix='_', on='source_id')
         ra        = data.ra.values
         dec       = data.dec.values
         Gmag      = data.phot_g_mean_mag.values
@@ -305,7 +304,6 @@ def parseExternalCatalogues(feature="sag", cfg=None, pointed=False):
     #source_id = source_id[j]
     revid     = np.zeros_like(ra).astype(np.int64) + np.int(c['gaiarev'])
     ps1id     = np.zeros_like(ra).astype(np.int64)
-
 
     dfext = vaex.from_arrays(ra=ra, dec=dec, G=Gmag, source_id=source_id.astype(np.int64), priority=priority)
 
