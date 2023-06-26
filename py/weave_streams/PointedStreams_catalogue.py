@@ -49,7 +49,7 @@ def filterExport(sname, wfile, ps1file, config="config.yaml"):
     # [ ] Check if priority is being properly exported
     # [ ]
 
-    notGaia = dfps1.source_id == -9999
+    notGaia = ((dfps1.source_id == -9999)|(dfps1.phot_g_mean_mag>20.5)) # not in Gaia, but also with reasonable Gaia measurements
     df = dfps1[(notGaia) * dfps1.ingi]
     pddf = df.to_pandas_df()
     pddf = pddf.drop_duplicates(subset=["objid"])
