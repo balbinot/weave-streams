@@ -25,7 +25,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     if args.pointed:
-        print("DOINT POINTED FITS CREATION")
+        print("DOING POINTED FITS CREATION")
         W.formatFits(args.input, pointed=True) ## Concatenate and add external catalogues
 
     else:
