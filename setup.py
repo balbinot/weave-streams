@@ -48,7 +48,7 @@ setup(
     description=("WEAVE streams selection"),
     license="BSD",
     keywords="streams target selection WEAVE surveys",
-    url="http://github.com/segasai/weave_galr",
+    url="https://github.com/balbinot/weave-streams",
     packages=['weave_streams', 'weave_streams/utils', 'weave_streams/coords'],
     scripts=[fname for fname in glob.glob(os.path.join('bin', '*'))] +
     [fname for fname in glob.glob(os.path.join('scripts', '*sh'))],
